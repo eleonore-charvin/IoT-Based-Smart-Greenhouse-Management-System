@@ -1,0 +1,14 @@
+{
+    "catalogURL": "http://catalog",
+    "ThingspeakURL": "https://api.thingspeak.com/update?api_key=",
+    "ChannelWriteAPIkey": "G992Q2RPM8FBPQCU",
+    "ChannelReadAPIKey": "AU8JEV87F39TDNIH",
+    "brokerIP": "mqtt.eclipseprojects.io",
+    "brokerPort": 1883,
+    "mqttTopic":"group06/SmartGreenhouse/",
+    "serviceInfo": {
+        "ID": 3,
+        "serviceName": "ThingspeakAdaptor",
+        "lastUpdated": ""
+    }
+}
