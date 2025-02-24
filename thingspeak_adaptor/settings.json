@@ -1,8 +1,7 @@
 {
     "catalogURL": "http://catalog",
-    "ThingspeakURL": "https://api.thingspeak.com/update?api_key=",
-    "ChannelWriteAPIkey": "G992Q2RPM8FBPQCU",
-    "ChannelReadAPIKey": "AU8JEV87F39TDNIH",
+    "thingspeakURL": "https://api.thingspeak.com/",
+    "userAPIKey": "5J0MLDYA3JOEZUKK",
     "brokerIP": "mqtt.eclipseprojects.io",
     "brokerPort": 1883,
     "mqttTopic":"group06/SmartGreenhouse/",
