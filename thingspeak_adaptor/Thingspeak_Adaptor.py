@@ -111,15 +111,15 @@ class Thingspeak_Adaptor:
         Returns:
             str: write API key of the channel.
         """
-        # Get the greenhouse form the catalog
+        # Get the greenhouse from the catalog
         greenhouse = requests.get(f"{self.catalogURL}/getGeenhouse?greenhouseID={greenhouseID}")
         
-        # If the greenhouse has a channel, get its write api key
+        # If the greenhouse has a channel, get its write API key
         if "thingspeakChannel" in greenhouse.keys():
             thingspeakInfo = greenhouse["thingspeakChannel"]
             channel_write_api_key = thingspeakInfo["channelWriteAPIkey"]
         
-        # Else, creayte a new channel and get its write api key
+        # Else, creayte a new channel and get its write API key
         else:
             channel_write_api_key = self.createGreenhouseChannel(greenhouse)
         return channel_write_api_key
@@ -205,6 +205,8 @@ if __name__ == "__main__":
     # Create an instance of Thingspeak_Adaptor
     settings = json.load(open("settings.json"))
     ts_adaptor = Thingspeak_Adaptor(settings)
+    print("Starting Thingspeak Adaptor...")
+
     # Register it in the catalog
     ts_adaptor.registerService()
 
