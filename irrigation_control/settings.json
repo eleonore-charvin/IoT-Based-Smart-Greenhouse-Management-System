@@ -1,0 +1,7 @@
+{
+    "broker":"mosquitto.org",
+    "port":1883,
+    "moisture_topic":"greenhouse/moisture",
+    "irrigation_topic":"greenhouse/irrigation",
+    "catalog_url":"catalog_url"
+}
