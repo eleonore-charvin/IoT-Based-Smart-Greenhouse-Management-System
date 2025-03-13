@@ -1,0 +1,12 @@
+{
+    "catalogURL": "http://catalog",
+    "mqttBroker": "mqtt.eclipseprojects.io",
+    "mqttPort": 1883,
+    
+    "deviceInfo": {
+        "deviceName": "TemperatureSensor",
+        "measureType": "Temperature",
+        "availableServices": ["MQTT", "REST"],
+        "IP": "localhost"
+    }
+}
