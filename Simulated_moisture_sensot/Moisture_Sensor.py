@@ -17,7 +17,6 @@ class SimulatedMoistureSensor:
         self.device_id = str(uuid.uuid4()) 
         self.device_info['ID'] = self.device_id
         self.device_info['port'] = random.randint(9000, 9999)
-        self.zone_id = settings['zone_id']
         self.moisture_level = random.randint(30, 60)
         self.irrigation_on = False
 
@@ -30,11 +29,32 @@ class SimulatedMoistureSensor:
 
         # Registra il dispositivo nel catalogo
         requests.post(f'{self.catalog_url}/devices', json=self.device_info, headers={"Content-Type": "application/json"})
-        time.sleep(2)  # Aspetta per permettere la registrazione
-        self.greenhouse_id = self.get_greenhouse_id()
+
+        # Attendi che il catalogo si aggiorni
+        for _ in range(5):
+            self.greenhouse_id = self.get_greenhouse_id()
+            if self.greenhouse_id != "unknown":
+                break
+            time.sleep(2)
+
+        self.zone_id = self.get_zone_id()
 
         # Avvia MQTT
         self.startSim()
+
+    def get_zone_id(self):
+        try:
+            response = requests.get(self.catalog_url)
+            catalog = response.json()
+            for greenhouse in catalog['greenhouseList']:
+                for zone in greenhouse['Zones']:
+                    for device in zone.get('devices', []):
+                        if device.get('deviceID') == self.device_info['ID']:
+                            return zone['ZoneID']
+            return "unknown"
+        except Exception as e:
+            print(f"Errore nel recupero dell'ID della zona: {e}")
+            return "unknown"
 
     def get_greenhouse_id(self):
         try:
@@ -52,8 +72,9 @@ class SimulatedMoistureSensor:
     def notify(self, topic, payload):
         try:
             message = json.loads(payload)
-            if "zone_id" in message and "command" in message and message["zone_id"] == self.zone_id:
-                self.irrigation_on = (message["command"] == "ON")
+            if "zone_id" in message and "command" in message:
+                if message["zone_id"] == self.zone_id:
+                    self.irrigation_on = (message["command"] == "ON")
         except Exception as e:
             print(f"Errore nell'elaborazione del messaggio: {e}")
     
@@ -113,9 +134,3 @@ if __name__ == '__main__':
         print("\nArresto del Simulated Moisture Sensor...")
         sensor.stopSim()
         cherrypy.engine.exit()
-
-    
-    cherrypy.tree.mount(sensor, '/', conf)
-    cherrypy.engine.start()
-    cherrypy.engine.block()
-    cherrypy.engine.exit()
