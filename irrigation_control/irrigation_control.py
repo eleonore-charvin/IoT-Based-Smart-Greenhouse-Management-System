@@ -37,7 +37,7 @@ class IrrigationControl:
                 if moisture_level < threshold:
                     print(f"Zone {zone_id}, Moisture level: {moisture_level}, needs water!")
                     irrigation_command = {"zone_id": zone_id, "command": "ON"}
-                    self.client.myPublish(self.irrigation_topic, irrigation_command)
+                    self.client.myPublish(self.irrigation_topic, self.dumps(irrigation_command))
                 else:
                     print(f"Zone {zone_id}, Moisture level {moisture_level}%, does not need water.")
             else:
