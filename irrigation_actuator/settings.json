@@ -6,7 +6,7 @@
     "irrigation_topic": "group06/SmartGreenhouse/irrigation",
     "serviceInfo": {
         "ID": 5,
-        "serviceName": "MoistureControl",
+        "serviceName": "MoistureActuator",
         "lastUpdated": ""
     }
 }
