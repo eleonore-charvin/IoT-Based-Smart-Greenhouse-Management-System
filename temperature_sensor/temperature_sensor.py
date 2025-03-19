@@ -7,7 +7,7 @@ import uuid
 from MyMQTT import *
 
 class TemperatureSensorREST_MQTT:
-    exposed = True 
+    exposed = True  
 
     def __init__(self, pi, settings):
         
