@@ -1,7 +1,13 @@
 {
     "broker":"mqtt.eclipseprojects.iog",
     "port":1883,
-    "moisture_topic":"greenhouse/moisture",
-    "irrigation_topic":"greenhouse/irrigation",
+    "moisture_topic":"group06/SmartGreenhouse//moisture",
+    "irrigation_topic":"group06/SmartGreenhouse//irrigation",
     "catalog_url":"http://catalog"
+
+    "serviceInfo": {
+        "ID": 6,
+        "serviceName": "MoistureControl",
+        "lastUpdated": ""
+    }
 }
