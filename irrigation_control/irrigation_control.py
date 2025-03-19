@@ -12,15 +12,13 @@ class IrrigationControl:
         self.catalog_url = catalog_url
         self.greenhouse_id = greenhouse_id
         self.fields = {}
-
     def get_all_fields(self):
         try:
             catalog = requests.get(self.catalog_url).json()
             fields = {}
-            for greenhouse in catalog["greenhouseList"]:
-                if greenhouse["greenhouseID"] == self.greenhouse_id:
-                    for zone in greenhouse["Zones"]:
-                        fields[zone["ZoneID"]] = zone["Mois_threshold"]["low"]
+            for greenhouse in catalog["greenhouseList"]:  # Itera su tutte le serre
+                for zone in greenhouse["Zones"]:  # Itera su tutte le zone di ogni serra
+                    fields[(greenhouse["greenhouseID"], zone["ZoneID"])] = zone["Mois_threshold"]["low"]
             return fields
         except Exception as e:
             print(f"Error fetching catalog: {e}")
