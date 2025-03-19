@@ -17,7 +17,9 @@ class SimulatedMoistureSensor:
         self.device_id = str(uuid.uuid4()) 
         self.device_info['ID'] = self.device_id
         self.device_info['port'] = random.randint(9000, 9999)
-        self.greenhouse_id = self.get_greenhouse_id()
+        self.zone_id = settings['zone_id']
+        self.moisture_level = random.randint(30, 60)
+        self.irrigation_on = False
 
         self.mqtt_broker = settings['broker']
         self.mqtt_port = settings['port']
@@ -25,21 +27,22 @@ class SimulatedMoistureSensor:
         self.irrigation_topic = settings['irrigation_topic']
         self.client_id = str(uuid.uuid1())
         self.client = MyMQTT(self.client_id, self.mqtt_broker, self.mqtt_port, self)
-        
-        self.zone_id = settings['zone_id']
-        self.moisture_level = random.randint(30, 60)
-        self.irrigation_on = False
-        
-        requests.post(f'{self.catalog_url}/devices', data=json.dumps(self.device_info))
+
+        # Registra il dispositivo nel catalogo
+        requests.post(f'{self.catalog_url}/devices', json=self.device_info, headers={"Content-Type": "application/json"})
+        time.sleep(2)  # Aspetta per permettere la registrazione
+        self.greenhouse_id = self.get_greenhouse_id()
+
+        # Avvia MQTT
         self.startSim()
-    
+
     def get_greenhouse_id(self):
         try:
-            response = requests.get(f'{self.catalog_url}')
+            response = requests.get(self.catalog_url)
             catalog = response.json()
             for greenhouse in catalog['greenhouseList']:
-                for device in greenhouse['devices']:
-                    if device['deviceID'] == self.device_info['ID']:
+                for device in greenhouse.get('devices', []):
+                    if device.get('deviceID') == self.device_info['ID']:
                         return greenhouse['greenhouseID']
             return "unknown"
         except Exception as e:
@@ -49,8 +52,8 @@ class SimulatedMoistureSensor:
     def notify(self, topic, payload):
         try:
             message = json.loads(payload)
-            if message.get("zone_id") == self.zone_id:
-                self.irrigation_on = (message.get("command") == "ON")
+            if "zone_id" in message and "command" in message and message["zone_id"] == self.zone_id:
+                self.irrigation_on = (message["command"] == "ON")
         except Exception as e:
             print(f"Errore nell'elaborazione del messaggio: {e}")
     
@@ -70,7 +73,7 @@ class SimulatedMoistureSensor:
     
     def publish(self):
         message = {"zone_id": self.zone_id, "moisture": self.update_moisture()}
-        self.client.myPublish(self.moisture_topic, message)
+        self.client.myPublish(self.moisture_topic, json.dumps(message))
         print(f"Zone {self.zone_id}: Moisture {self.moisture_level}% (Irrigation: {self.irrigation_on})")
     
     def GET(self, *uri, **params):
@@ -80,20 +83,37 @@ class SimulatedMoistureSensor:
             return json.dumps(self.device_info)
     
     def pingCatalog(self):
-        requests.put(f'{self.catalog_url}/devices', data=json.dumps(self.device_info))
-    
+        try:
+            requests.put(f'{self.catalog_url}/devices', json=self.device_info, headers={"Content-Type": "application/json"})
+        except requests.RequestException as e:
+            print(f"Errore nel ping del catalogo: {e}")
+
 if __name__ == '__main__':
     with open('settings.json') as f:
         settings = json.load(f)
-    
-    conf = {'/': {'request.dispatch': cherrypy.dispatch.MethodDispatcher(),'tools.sessions.on': True}}
+
+    conf = {'/': {'request.dispatch': cherrypy.dispatch.MethodDispatcher(), 'tools.sessions.on': True}}
     
     sensor = SimulatedMoistureSensor(settings)
-    
+
     cherrypy.config.update({
         'server.socket_host': settings['device_info']['IP'],  
         'server.socket_port': sensor.device_info['port']
     })
+    
+    cherrypy.tree.mount(sensor, '/', conf)
+    cherrypy.engine.start()
+
+    try:
+        while True:
+            sensor.publish()       # Pubblica il livello di umidità
+            sensor.pingCatalog()   # Mantiene attivo il dispositivo nel catalogo
+            time.sleep(10)         # Intervallo di aggiornamento
+    except KeyboardInterrupt:
+        print("\nArresto del Simulated Moisture Sensor...")
+        sensor.stopSim()
+        cherrypy.engine.exit()
+
     
     cherrypy.tree.mount(sensor, '/', conf)
     cherrypy.engine.start()
