@@ -10,20 +10,21 @@ class IrrigationActuator:
         self.pot_id = potID
         self.client.start()
         self.client.mySubscribe(self.irrigation_topic)
-
+        
     def notify(self, topic, payload):
         try:
             message = json.loads(payload)
-            action = message.get("command") 
+            zone_id = message.get("zone_id")
+            command = message.get("command")
             
-            if action == "ON":
-                print(f"Irrigation started for {self.pot_id}")
+            if command == "ON":
+                print(f"Irrigation started for zone {zone_id}")
                 self.irrigation_status = "ON"
-            elif action == "OFF":
-                print(f"Irrigation stopped for {self.pot_id}")
+            elif command == "OFF":
+                print(f"Irrigation stopped for zone {zone_id}")
                 self.irrigation_status = "OFF"
             else:
-                print(f"Invalid action received: {action}")
+                print(f"Invalid command received: {command}")
         except (ValueError, KeyError) as e:
             print(f"Error processing message: {e}")
 
