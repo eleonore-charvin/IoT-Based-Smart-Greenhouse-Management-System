@@ -3,56 +3,54 @@ import time
 import MyMQTT
 
 class IrrigationActuator:
-    def __init__(self, clientID, broker, port, sub_topic):
-        self.client = MyMQTT(clientID, broker, port, self)
-        self.client.start()
-        self.client.mySubscribe(sub_topic)
+    def __init__(self, clientID, broker, port, irrigation_topic, potID):
+        self.client = MyMQTT.MyMQTT(clientID, broker, port, self)
+        self.irrigation_topic = irrigation_topic
         self.irrigation_status = "OFF"
-        self.greenhouse_id = 1
-        self.pot_id = "potID" #id of the zone 
+        self.pot_id = potID
+        self.client.start()
+        self.client.mySubscribe(self.irrigation_topic)
+
     def notify(self, topic, payload):
         try:
-            #receives the message with the action to do
-            message = json.loads(payload.decode())
-            action = message.get("action")
+            message = json.loads(payload)
+            action = message.get("command") 
             
-            #actuation of the action in the message
-            if action == "start_irrigation":
-                print("Irrigation started")
+            if action == "ON":
+                print(f"Irrigation started for {self.pot_id}")
                 self.irrigation_status = "ON"
-            elif action == "stop_irrigation":
-                print("Irrigation stopped")
+            elif action == "OFF":
+                print(f"Irrigation stopped for {self.pot_id}")
                 self.irrigation_status = "OFF"
             else:
-                print("Invalid action received")
+                print(f"Invalid action received: {action}")
         except (ValueError, KeyError) as e:
             print(f"Error processing message: {e}")
 
-def start(self):
-        """Avvia l'ascolto sul topic /actuator."""
-        actuator_topic = f"{self.sub_topic}Greenhouse{self.greenhouse_id}/{self.pot_id}"
-        self.client.mySubscribe(sub_topic)
+    def start(self):
         self.client.start()
-        print("Actuator control system started.")
+        self.client.mySubscribe(self.irrigation_topic)
+        print("Irrigation Actuator started.")
 
     def stop(self):
-        """Ferma il client MQTT."""
         self.client.stop()
-        print("Actuator control system stopped.")
+        print("Irrigation Actuator stopped.")
 
 if __name__ == "__main__":
     with open("settings.json", "r") as f:
         config = json.load(f)
 
     actuator = IrrigationActuator(
+        clientID="IrrigationActuator",
         broker=config["broker"],
         port=config["port"], 
-        irrigation_topic= config["irrigation_topic"],
-        potID = config["potID"]
+        irrigation_topic=config["irrigation_topic"],
+        potID=config["potID"]
     )
+    
     try:
         while True:
-            pass
+            time.sleep(1)
     except KeyboardInterrupt:
         print("Chiusura Irrigation Actuator...")
-        actuator.client.stop()
+        actuator.stop()
