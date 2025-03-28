@@ -1,8 +1,8 @@
 {
     "broker":"mqtt.eclipseprojects.iog",
     "port":1883,
-    "moisture_topic":"group06/SmartGreenhouse//moisture",
-    "irrigation_topic":"group06/SmartGreenhouse//irrigation",
+    "moisture_topic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/moisture",
+    "irrigation_topic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation",
     "catalog_url":"http://catalog"
 
     "serviceInfo": {
