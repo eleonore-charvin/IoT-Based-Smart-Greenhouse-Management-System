@@ -1,4 +1,3 @@
-
 import requests
 import json
 import random
@@ -8,89 +7,92 @@ from MyMQTT import *
 
 class TemperatureSensorMQTT:
     def __init__(self, settings, greenhouseID):
-
-        self.settings = settings 
-        self.catalogURL = self.settings['catalogURL']
-
+        self.settings = settings
+        self.catalogURL = self.settings["catalogURL"]
+        self.deviceInfo = self.settings["deviceInfo"]
+        self.broker = self.settings["brokerIP"]
+        self.port = self.settings["brokerPort"]
         self.greenhouseID = greenhouseID
-        self.deviceID = f"temp_sens{self.greenhouseID}"  # ID univoco per il sensore
+        self.temperatureTopic = self.settings["temperatureTopic"].format(greenhouseID=self.greenhouseID)
+        self.heatingcoolingTopic = self.settings["heatingcoolingTopic"].format(greenhouseID=self.greenhouseID)
 
-        self.mqttBroker = self.settings['mqttBroker']
-        self.mqttPort = self.settings['mqttPort']
-        self.topic_publish = f"group06/SmartGreenhouse/{self.greenhouseID}/temperature"
-        self.topic_subscribe = f"group06/SmartGreenhouse/{self.greenhouseID}/actuator"
-        self.clientID = str(uuid.uuid1())  
-        self.client = MyMQTT(self.clientID, self.mqttBroker, self.mqttPort, self)
+        self.deviceID = f"TemperatureSensor{self.greenhouseID}"
 
-        self.current_temperature = random.uniform(17.0, 40.0)
-        self.heating = False  
-        self.cooling = False  
+        self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=None)
 
-        # Registra il dispositivo nel catalogo
-        deviceInfo = {
-            "ID": self.deviceID,
-            "type": "temperature_sensor",
-            "greenhouseID": self.greenhouseID
-        }
-        requests.post(f'{self.catalogURL}/devices', json=deviceInfo)
+        self.current_temperature = None  
+        self.previous_temperature = 20.0  # initial temperature
+        self.heating = False
+        self.cooling = False
 
         self.startMQTT()
 
-    def notify(self, topic, payload):
-        """Riceve i comandi dall'attuatore"""
-        try:
-            message = json.loads(payload)
-            command = message.get("command")
-
-            if command == "heating_on":
-                self.heating = True
-                self.cooling = False
-                print(f"[{self.deviceID}] Heating ON")
-            elif command == "cooling_on":
-                self.cooling = True
-                self.heating = False
-                print(f"[{self.deviceID}] Cooling ON")
-            elif command == "off":
-                self.heating = False
-                self.cooling = False
-                print(f"[{self.deviceID}] All OFF")
-        except Exception as e:
-            print(f"Error processing MQTT message: {e}")
-
-    def read_temperature_value(self):
-        """Simula la lettura della temperatura"""
-        if self.heating:
-            self.current_temperature = min(self.current_temperature + random.uniform(0.3, 0.8), 35.0)
-        elif self.cooling:
-            self.current_temperature = max(self.current_temperature - random.uniform(0.3, 0.8), 18.0)
-        else:
-            self.current_temperature = max(18.0, min(35.0, self.current_temperature + random.uniform(-0.2, 0.2)))
-
-        return round(self.current_temperature, 2)
-
     def startMQTT(self):
-        """Avvia il client MQTT"""
-        self.client.start()
-        self.client.mySubscribe(self.topic_subscribe)
+        """
+        Start the MQTT client and subscribe to the temperature topic
+        """
+        self.mqttClient.start()
+        self.mqttClient.mySubscribe(self.heatingcoolingTopic)
+        self.mqttClient.mySubscribe(self.temperatureTopic)  
 
     def stopMQTT(self):
-        """Ferma il client MQTT"""
-        self.client.stop()
+        """
+        Stop the MQTT client
+        """
+        self.mqttClient.stop()
+
+    def notify(self, topic, payload):
+        """
+        Riceve i comandi dall'attuatore (come riscaldamento, raffreddamento, etc.)
+        """
+        if topic == self.heatingcoolingTopic:
+            try:
+                message = json.loads(payload)
+                command = message.get("command")
+
+                if command == "heating_on":
+                    self.heating = True
+                    self.cooling = False
+                elif command == "cooling_on":
+                    self.cooling = True
+                    self.heating = False
+                elif command == "off":
+                    self.heating = False
+                    self.cooling = False
+                else:
+                    print(f"[{self.deviceID}] Unknown command: {command}")
+            except json.JSONDecodeError:
+                print(f"[{self.deviceID}] Error in the format of the MQTT message.")
+            except Exception as e:
+                print(f"[{self.deviceID}] Error in the message: {e}")
+
+    def read_temperature_value(self):
+        """
+        Simula la lettura della temperatura.
+        La temperatura viene modificata in base allo stato di riscaldamento/raffreddamento.
+        """
+        if self.heating:
+            self.current_temperature = min(self.previous_temperature + random.uniform(0.3, 0.8), 35.0)
+        elif self.cooling:
+            self.current_temperature = max(self.previous_temperature - random.uniform(0.3, 0.8), 18.0)
+        else:
+            self.current_temperature = max(18.0, min(35.0, self.previous_temperature + random.uniform(-0.2, 0.2)))
+
+        self.previous_temperature = self.current_temperature
+        return round(self.current_temperature, 1) 
 
     def publish_temperature(self):
-        """Pubblica la temperatura attuale"""
-        message = {
-            'bn': f'TemperatureSensor_{self.deviceID}',
-            'e': [{'n': 'temperature', 'v': self.read_temperature_value(), 't': time.time(), 'u': 'cel'}]
-        }
-        self.client.myPublish(self.topic_publish, json.dumps(message))
-        print(f"[{self.deviceID}] Published: {message}")
+        """
+        Pubblica la temperatura attuale nel topic, ma stampa il messaggio completo a video.
+        """
+        temperature = self.read_temperature_value()
+
+        self.mqttClient.myPublish(self.temperatureTopic, str(temperature)) # publish the temperature
+        print(f"[{self.deviceID}] Published Temperature: {temperature} °C") # print the complete message
 
 if __name__ == '__main__':
-    with open('settings.json') as settings_file:
-        settings = json.load(settings_file)
+    settings = json.load(open("settings.json"))
 
-    # Recupera la lista delle serre dal catalogo
     try:
         response = requests.get(f"{settings['catalogURL']}/greenhouses")
         greenhouses = response.json().get('greenhousesList', [])
@@ -98,8 +100,7 @@ if __name__ == '__main__':
         print(f"Error fetching greenhouses: {e}")
         greenhouses = []
 
-    sensors = []  # Lista per mantenere le istanze dei sensori
-
+    sensors = [] 
     for greenhouse in greenhouses:
         greenhouseID = greenhouse["greenhouseID"]
         sensor = TemperatureSensorMQTT(settings, greenhouseID)
@@ -111,7 +112,7 @@ if __name__ == '__main__':
         while True:
             for sensor in sensors:
                 sensor.publish_temperature()
-            time.sleep(10)
+            time.sleep(10) 
     except KeyboardInterrupt:
         print("Stopping sensors...")
         for sensor in sensors:

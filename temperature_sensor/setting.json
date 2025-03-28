@@ -1,10 +1,14 @@
 {
     "catalogURL": "http://catalog",
-    "mqttBroker": "mqtt.eclipseprojects.io",
-    "mqttPort": 1883,
-    
+    "brokerIP": "mqtt.eclipseprojects.io",
+    "brokerPort": 1883,
+    "temperatureTopic": "group06/SmartGreenhouse/{greenhouseID}/temp",
+    "heatingcoolingTopic": "group06/SmartGreenhouse/{greenhouseID}/heatingcooling",  
     "deviceInfo": {
         "deviceName": "TemperatureSensor",
-        "measureType": "Temperature"
+        "deviceID":"",
+        "measureType": "Temperature",
+        "lastUpdated": ""
+
     }
 }
