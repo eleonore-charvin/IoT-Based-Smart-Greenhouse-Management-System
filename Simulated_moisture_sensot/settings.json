@@ -7,8 +7,6 @@
     "deviceInfo": {
         "deviceName": "MoistureSensor",
         "measureType": "SoilMoisture",
-        "availableServices": ["MQTT", "REST"],
-        "IP": "localhost"
-    },
+    }
 
 }
