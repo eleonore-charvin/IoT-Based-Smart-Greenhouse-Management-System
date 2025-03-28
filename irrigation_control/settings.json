@@ -1,24 +1,14 @@
 {
     "broker":"mqtt.eclipseprojects.iog",
     "port":1883,
-<<<<<<< HEAD
-<<<<<<< HEAD
-    "moisture_topic":"greenhouse/moisture",
-    "irrigation_topic":"greenhouse/irrigation",
-    "catalog_url":"http://catalog"
-=======
-    "moisture_topic":"group06/SmartGreenhouse//moisture",
-    "irrigation_topic":"group06/SmartGreenhouse//irrigation",
-=======
-    "moisture_topic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/moisture",
-    "irrigation_topic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation",
->>>>>>> 52ec6cfc718fb7e9e41d468a5b25e7735d7f4ef9
     "catalog_url":"http://catalog"
 
+    "moisture_topic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/moisture",
+    "irrigation_topic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation",
     "serviceInfo": {
         "ID": 6,
         "serviceName": "MoistureControl",
         "lastUpdated": ""
     }
->>>>>>> d0cf3d68c964947a43f269bbe0ad6b9207443f7a
+
 }
