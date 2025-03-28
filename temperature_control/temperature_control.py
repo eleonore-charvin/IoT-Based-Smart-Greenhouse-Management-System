@@ -1,33 +1,33 @@
-
-import json
 import requests
+import json
 import time
+import uuid
 from MyMQTT import *
 
 class TemperatureControl:
-    def __init__(self, settings):
+    def __init__(self, settings, greenhouseID):
         self.settings = settings
-        self.catalog_url = self.settings["catalogURL"]
-        self.broker_ip = self.settings["brokerIP"]
-        self.broker_port = self.settings["brokerPort"]
-        self.mqtt_topic_base = self.settings["mqttTopic"]
+        self.catalogURL = self.settings["catalogURL"]
+        self.broker = self.settings["brokerIP"]
+        self.port = self.settings["brokerPort"]
+        self.greenhouseID = greenhouseID
+        self.temperatureTopic = self.settings["temperatureTopic"].format(greenhouseID=self.greenhouseID)
+        self.heatingcoolingTopic = self.settings["heatingcoolingTopic"].format(greenhouseID=self.greenhouseID)
 
-        self.client = MyMQTT("TemperatureControl", self.broker_ip, self.broker_port, self)
+        self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=self)
 
-        self.greenhouse_id = 1  
         self.temp_min = None
         self.temp_max = None
         self.current_temperature = None
-        self.last_command = None  # Ultimo comando inviato
 
-    def get_temperature_range(self): 
+    def get_temperature_range(self):
         """Recupera il range di temperatura accettabile dal catalogo."""
         try:
-            response = requests.get(self.catalog_url)
+            response = requests.get(f"{self.catalogURL}/greenhouses")
             if response.status_code == 200:
                 catalog = response.json()
                 for greenhouse in catalog["greenhousesList"]:
-                    if greenhouse["greenhouseID"] == self.greenhouse_id:
+                    if greenhouse["greenhouseID"] == self.greenhouseID:
                         min_temp_values = []
                         max_temp_values = []
                         for zone in greenhouse["zones"]:
@@ -44,33 +44,15 @@ class TemperatureControl:
         except Exception as e:
             print(f"Errore nella richiesta al catalogo: {e}")
 
-    def notify_actuator(self, heating, cooling):
-        """Pubblica lo stato attuale sul topic /actuator."""
-        topic = f"{self.mqtt_topic_base}Greenhouse{self.greenhouse_id}/actuator"
-        message = {
-            "command": {
-                "heating": "on" if heating else "off",
-                "cooling": "on" if cooling else "off"
-            }
-        }
-
-        # Convertiamo il messaggio in stringa per confrontarlo con il precedente
-        message_str = json.dumps(message)
-        
-        if message_str != self.last_command:
-            self.client.myPublish(topic, message_str)
-            print(f"Pubblicato comando: {message}")
-            self.last_command = message_str  # Aggiorniamo l'ultimo comando inviato
-
     def temperature_callback(self, topic, payload):
         """Gestisce i messaggi ricevuti dal sensore di temperatura."""
         try:
             data = json.loads(payload)
             self.current_temperature = data["e"][0]["v"]
-            print(f"Temperatura ricevuta: {self.current_temperature}")
+            print(f"[{self.greenhouseID}] Temperatura ricevuta: {self.current_temperature}")
             self.control_temperature()
         except Exception as e:
-            print(f"Errore nella gestione del messaggio MQTT: {e}")
+            print(f"[{self.greenhouseID}] Errore nella gestione del messaggio MQTT: {e}")
 
     def control_temperature(self):
         """Decide se attivare riscaldamento o raffreddamento e pubblica sempre lo stato attuale."""
@@ -78,35 +60,57 @@ class TemperatureControl:
             return
 
         if self.current_temperature < self.temp_min:
-            self.notify_actuator(heating=True, cooling=False)
+            self.publish_command("heating_on")
         elif self.current_temperature > self.temp_max:
-            self.notify_actuator(heating=False, cooling=True)
+            self.publish_command("cooling_on")
         else:
-            self.notify_actuator(heating=False, cooling=False)
+            self.publish_command("off")
+
+    def publish_command(self, command):
+        """Pubblica il comando sul topic /heatingcoolingTopic."""
+        message = {
+            "command": command
+        }
+        self.mqttClient.myPublish(self.heatingcoolingTopic, json.dumps(message))
+        print(f"[{self.greenhouseID}] Pubblicato comando: {command}")
 
     def start(self):
         """Avvia il controllo della temperatura."""
         self.get_temperature_range()
-        temp_topic = f"{self.mqtt_topic_base}Greenhouse{self.greenhouse_id}/temperature"
-        self.client.mySubscribe(temp_topic)
-        self.client.start()
-        print("Controllo della temperatura avviato.")
+        self.mqttClient.mySubscribe(self.temperatureTopic)
+        self.mqttClient.mySubscribe(self.heatingcoolingTopic)
+        self.mqttClient.start()
+        print(f"[{self.greenhouseID}] Controllo della temperatura avviato.")
 
     def stop(self):
         """Ferma il client MQTT."""
-        self.client.stop()
-        print("Controllo della temperatura arrestato.")
+        self.mqttClient.stop()
+        print(f"[{self.greenhouseID}] Controllo della temperatura arrestato.")
 
 if __name__ == "__main__":
-    # Apertura del file settings.json
-    with open("settings.json", "r") as file:
-        settings = json.load(file)
+    settings = json.load(open("settings.json"))
 
-    controller = TemperatureControl(settings)
-    controller.start()
-    
+    try:
+        response = requests.get(f"{settings['catalogURL']}/greenhouses")
+        greenhouses = response.json().get('greenhousesList', [])
+    except Exception as e:
+        print(f"Error fetching greenhouses: {e}")
+        greenhouses = []
+
+    controllers = []  # Lista per gestire più serre
+
+    for greenhouse in greenhouses:
+        greenhouseID = greenhouse["greenhouseID"]
+        controller = TemperatureControl(settings, greenhouseID)
+        controllers.append(controller)
+        controller.start() 
+
+    print("Temperature controllers started.")
+
     try:
         while True:
             time.sleep(10)
     except KeyboardInterrupt:
-        controller.stop()
+        print("Stopping controllers...")
+        for controller in controllers:
+            controller.stop()

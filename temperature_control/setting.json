@@ -1,13 +1,7 @@
 {
     "catalogURL": "http://catalog",
-    "thingspeakURL": "https://api.thingspeak.com/",
     "brokerIP": "mqtt.eclipseprojects.io",
     "brokerPort": 1883,
-    "mqttTopic":"group06/SmartGreenhouse/",
-    "serviceInfo": {
-        "ID": 4,
-        "serviceName": "TemperatureMonitoring",
-        "lastUpdated": ""
-    },
-    "moistureIncrement": 5
+    "temperatureTopic": "group06/SmartGreenhouse/{greenhouseID}/temp",
+    "heatingcoolingTopic": "group06/SmartGreenhouse/{greenhouseID}/heatingcooling"
 }

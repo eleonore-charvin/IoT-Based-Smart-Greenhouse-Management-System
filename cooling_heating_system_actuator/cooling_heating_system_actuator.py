@@ -1,6 +1,7 @@
 import json
 import requests
 from MyMQTT import *
+import time
 
 class ActuatorControl:
     def __init__(self, settings, greenhouseID):
@@ -16,7 +17,25 @@ class ActuatorControl:
 
         self.actuator_topic = f"{self.mqtt_topic_base}Greenhouse{self.greenhouseID}/actuator"
 
+        self.register_device()
         self.startMQTT()
+
+    def register_device(self):
+        """Registrazione dell'attuatore nel catalogo."""
+        device_info = self.settings["deviceInfo"].copy()  # Copia il template da settings
+        device_info["deviceID"] = self.greenhouseID  # Assegna l'ID della serra all'attuatore
+        device_info["deviceName"] = "CoolingAndHeatingActuator"
+        device_info["status"] = "off"
+        device_info["lastUpdate"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())  # Timestamp
+
+        try:
+            response = requests.post(f"{self.settings['catalogURL']}/devices", data=json.dumps(device_info))
+            if response.status_code == 200:
+                print(f"[{self.deviceID}] Actuator registered in catalog successfully.")
+            else:
+                print(f"[{self.deviceID}] Failed to register actuator in catalog.")
+        except Exception as e:
+            print(f"[{self.deviceID}] Error registering actuator in catalog: {e}")
 
     def notify(self, topic, payload):
         """Riceve i comandi dal topic MQTT e stampa lo stato dell'attuatore."""
@@ -51,10 +70,8 @@ class ActuatorControl:
         print(f"[{self.deviceID}] Actuator control system stopped.")
 
 if __name__ == "__main__":
-    with open("settings.json", "r") as file:
-        settings = json.load(file)
+    settings = json.load(open("settings.json"))
 
-    # Recupera la lista delle serre dal catalogo
     try:
         response = requests.get(f"{settings['catalogURL']}/greenhouses")
         greenhouses = response.json().get('greenhousesList', [])
