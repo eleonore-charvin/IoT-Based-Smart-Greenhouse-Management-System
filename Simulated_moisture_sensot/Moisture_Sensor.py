@@ -30,25 +30,26 @@ class SimulatedMoistureSensor:
 
         self.zone_id = zone_id
 
-        # Registra il dispositivo nel catalogo
+        #register the device to the catalog
         requests.post(f'{self.catalog_url}/devices', data=json.dumps(self.device_info))
 
-        # Recupera greenhouse_id dinamicamente dalla nuova endpoint
-        self.greenhouse_id = self.get_greenhouse_id_from_api()
+        #takes the greenhouse_id list
+        self.greenhouse_id = self.get_greenhouse_id()
 
         self.startSim()
-
-    def get_greenhouse_id_from_api(self):
+        
+    #function to get the greenhouse id and realtive zones
+    def get_greenhouse_id(self):
         try:
             response = requests.get(f"{self.catalog_url}/greenhouses")
-            catalog = response.json()
+            catalog = response.json() 
             for greenhouse in catalog['greenhousesList']:
                 for zone in greenhouse.get('Zones', []):
                     if zone['ZoneID'] == self.zone_id:
                         return greenhouse['greenhouseID']
             return "unknown"
         except Exception as e:
-            print(f"Errore nel recupero dell'ID della serra (API /greenhouses): {e}")
+            print(f"Error retrieving greenhouse ID (API /greenhouses): {e}")
             return "unknown"
 
     def notify(self, topic, payload):
@@ -57,8 +58,9 @@ class SimulatedMoistureSensor:
             if message.get("zone_id") == self.zone_id:
                 self.irrigation_on = (message.get("command") == "ON")
         except Exception as e:
-            print(f"Errore nell'elaborazione del messaggio: {e}")
-
+            print(f"Error in message processing: {e}")
+            
+    #update the moisture level with respect to the irrigation status
     def update_moisture(self):
         if self.irrigation_on:
             self.moisture_level = min(100, self.moisture_level + 10)
@@ -92,20 +94,21 @@ if __name__ == '__main__':
         settings = json.load(f)
 
     try:
-        response = requests.get(f"{settings['catalog_url']}/greenhouses")
-        greenhouses = response.json().get('greenhousesList', [])
+        #make a list of greenhouses from the catalog
+        greenhouses = requests.get(f"{settings['catalog_url']}/greenhouses").json().get('greenhousesList', [])
     except Exception as e:
-        print(f"Errore nel recupero delle serre: {e}")
+        print(f"Error in retreiving greenhouses: {e}")
         greenhouses = []
 
     sensors = []
+    #for each greenhouse, take the relative ìs zone and for each create a moisture sensor
     for greenhouse in greenhouses:
         for zone in greenhouse.get('Zones', []):
             zone_id = zone['ZoneID']
             sensor = SimulatedMoistureSensor(settings, zone_id)
             sensors.append(sensor)
 
-    print("Sensori di umidità avviati.")
+    print("Moisture sensors on.")
 
     try:
         while True:
@@ -113,6 +116,6 @@ if __name__ == '__main__':
                 sensor.publish()
             time.sleep(10)
     except KeyboardInterrupt:
-        print("Chiusura sensori...")
+        print("Sensors stopping...")
         for sensor in sensors:
             sensor.stopSim()
