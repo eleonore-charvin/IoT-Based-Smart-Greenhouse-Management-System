@@ -1,10 +1,4 @@
 {
-    "broker":"mosquitto.org",
-    "port":1883,
-    "irrigation_topic":"greenhouse/irrigation",
-    "catalog_url":"catalog_url"
-}
-
     "catalogURL": "http://catalog",
     "thingspeakURL": "https://api.thingspeak.com/",
     "broker": "mqtt.eclipseprojects.io",
