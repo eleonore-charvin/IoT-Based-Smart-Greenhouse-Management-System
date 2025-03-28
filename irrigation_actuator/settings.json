@@ -1,6 +1,21 @@
 {
+<<<<<<< HEAD
     "broker":"mosquitto.org",
     "port":1883,
     "irrigation_topic":"greenhouse/irrigation",
     "catalog_url":"catalog_url"
 }
+=======
+    "catalogURL": "http://catalog",
+    "thingspeakURL": "https://api.thingspeak.com/",
+    "broker": "mqtt.eclipseprojects.io",
+    "port": 1883,
+    "irrigation_topic": "group06/SmartGreenhouse/irrigation",
+    "serviceInfo": {
+        "ID": 5,
+        "serviceName": "MoistureActuator",
+        "lastUpdated": ""
+    }
+}
+
+>>>>>>> d0cf3d68c964947a43f269bbe0ad6b9207443f7a

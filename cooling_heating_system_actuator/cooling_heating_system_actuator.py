@@ -1,4 +1,5 @@
 import json
+<<<<<<< HEAD
 import requests
 from MyMQTT import *
 
@@ -20,6 +21,23 @@ class ActuatorControl:
 
     def notify(self, topic, payload):
         """Riceve i comandi dal topic MQTT e stampa lo stato dell'attuatore."""
+=======
+from MyMQTT import *
+
+class ActuatorControl:
+    def __init__(self, settings):
+        self.settings = settings
+        self.broker_ip = self.settings["brokerIP"]
+        self.broker_port = self.settings["brokerPort"]
+        self.mqtt_topic_base = self.settings["mqttTopic"]
+
+        self.client = MyMQTT("ActuatorControl", self.broker_ip, self.broker_port, self)
+
+        self.greenhouse_id = 1  # ID della serra da monitorare
+
+    def notify(self, topic, payload):
+        """Riceve i comandi dal topic /actuator e stampa lo stato degli attuatori."""
+>>>>>>> d0cf3d68c964947a43f269bbe0ad6b9207443f7a
         try:
             data = json.loads(payload)
             command = data.get("command", {})
@@ -28,6 +46,7 @@ class ActuatorControl:
             cooling = command.get("cooling", "off")
 
             if heating == "on" and cooling == "off":
+<<<<<<< HEAD
                 print(f"[{self.deviceID}] Heating system is ON. The greenhouse is warming up.")
             elif cooling == "on" and heating == "off":
                 print(f"[{self.deviceID}] Cooling system is ON. The greenhouse is cooling down.")
@@ -49,11 +68,36 @@ class ActuatorControl:
         """Ferma il client MQTT."""
         self.client.stop()
         print(f"[{self.deviceID}] Actuator control system stopped.")
+=======
+                print("Heating system is ON. The greenhouse is warming up.")
+            elif cooling == "on" and heating == "off":
+                print("Cooling system is ON. The greenhouse is cooling down.")
+            elif heating == "off" and cooling == "off":
+                print("All systems are OFF. Temperature is within the desired range.")
+            else:
+                print("Invalid command received.")
+
+        except Exception as e:
+            print(f"Error processing MQTT message: {e}")
+
+    def start(self):
+        """Avvia l'ascolto sul topic /actuator."""
+        actuator_topic = f"{self.mqtt_topic_base}Greenhouse{self.greenhouse_id}/actuator"
+        self.client.mySubscribe(actuator_topic)
+        self.client.start()
+        print("Actuator control system started.")
+
+    def stop(self):
+        """Ferma il client MQTT."""
+        self.client.stop()
+        print("Actuator control system stopped.")
+>>>>>>> d0cf3d68c964947a43f269bbe0ad6b9207443f7a
 
 if __name__ == "__main__":
     with open("settings.json", "r") as file:
         settings = json.load(file)
 
+<<<<<<< HEAD
     # Recupera la lista delle serre dal catalogo
     try:
         response = requests.get(f"{settings['catalogURL']}/greenhouses")
@@ -70,11 +114,19 @@ if __name__ == "__main__":
         actuators.append(actuator)
 
     print("Actuator control systems started.")
+=======
+    actuator = ActuatorControl(settings)
+    actuator.start()
+>>>>>>> d0cf3d68c964947a43f269bbe0ad6b9207443f7a
 
     try:
         while True:
             pass  # Mantiene il programma in esecuzione
     except KeyboardInterrupt:
+<<<<<<< HEAD
         print("Stopping actuators...")
         for actuator in actuators:
             actuator.stopMQTT()
+=======
+        actuator.stop()
+>>>>>>> d0cf3d68c964947a43f269bbe0ad6b9207443f7a
