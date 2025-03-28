@@ -4,11 +4,11 @@ import time
 import MyMQTT
 
 class IrrigationActuator:
-    def __init__(self, clientID, broker, port, irrigation_topic, potID):
+    def __init__(self, clientID, broker, port, irrigation_topic, zoneID):
         self.client = MyMQTT.MyMQTT(clientID, broker, port, self)
         self.irrigation_topic = irrigation_topic
         self.irrigation_status = "OFF"
-        self.pot_id = potID
+        self.zone_id = zoneID
         self.client.start()
         self.client.mySubscribe(self.irrigation_topic)
         
