@@ -7,7 +7,8 @@ from MyMQTT import *
 
 class TemperatureSensorMQTT:
     def __init__(self, settings, greenhouseID):
-        self.settings = settings
+
+        self.settings = settings 
         self.catalogURL = self.settings['catalogURL']
 
         self.greenhouseID = greenhouseID

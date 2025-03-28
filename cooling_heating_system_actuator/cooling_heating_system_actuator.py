@@ -6,7 +6,7 @@ class ActuatorControl:
     def __init__(self, settings, greenhouseID):
         self.settings = settings
         self.broker_ip = self.settings["brokerIP"]
-        self.broker_port = self.settings["brokerPort"]
+        self.broker_port = self.settings["brokerPort"] 
         self.mqtt_topic_base = self.settings["mqttTopic"]
 
         self.greenhouseID = greenhouseID

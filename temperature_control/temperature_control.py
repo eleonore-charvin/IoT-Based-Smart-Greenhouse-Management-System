@@ -19,7 +19,7 @@ class TemperatureControl:
         self.current_temperature = None
         self.last_command = None  # Ultimo comando inviato
 
-    def get_temperature_range(self):
+    def get_temperature_range(self): 
         """Recupera il range di temperatura accettabile dal catalogo."""
         try:
             response = requests.get(self.catalog_url)
