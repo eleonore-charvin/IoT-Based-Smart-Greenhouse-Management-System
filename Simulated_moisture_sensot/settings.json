@@ -3,12 +3,10 @@
     "mqttBroker": "mqtt.eclipseprojects.io",
     "mqttPort": 1883,
     "moistureTopic": "group06/SmartGreenhouse/{greenhouseID}/{zoneID}/moisture",
-    "irrigationTopic": "group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation"
+    "irrigationTopic": "group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation",
     "deviceInfo": {
         "deviceName": "MoistureSensor",
         "measureType": "SoilMoisture",
-        "availableServices": ["MQTT", "REST"],
-        "IP": "localhost"
-    },
+    }
 
 }
