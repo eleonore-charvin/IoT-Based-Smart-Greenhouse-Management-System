@@ -20,7 +20,6 @@ class TemperatureMonitoring:
         self.catalogURL = self.settings["catalogURL"]
         self.baseURL = self.settings["thingspeakURL"]
         self.serviceInfo = self.settings["serviceInfo"]
-        self.serviceInfo = self.serviceInfo["ID"]
         self.baseTopic = self.settings["mqttTopic"]
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"]
@@ -79,12 +78,13 @@ class TemperatureMonitoring:
             # Fetch data from ThingSpeak
             response = requests.get(url)
             data = response.json()
+            feeds = data.get("feeds", [])
 
-            # Extract timestamp & temperature values
+            # Extract timestamp and temperature values
             daily_temperatures = {}
-            for entry in data["feeds"]:
+            for entry in feeds:
                 timestamp = entry["created_at"][:10]  # Extract only the date (YYYY-MM-DD)
-                temp_value = entry[f"field{field_number}"]
+                temp_value = entry.get(f"field{field_number}")
 
                 if temp_value is not None:
                     temp_value = float(temp_value)
@@ -99,7 +99,7 @@ class TemperatureMonitoring:
         else:
             print("Cannot retrieve channel for Greenhouse {greenhouseID}")
     
-    def compute_moisture_adjustement(self, daily_avg_temperature):
+    def compute_moisture_adjustment(self, daily_avg_temperature):
         """
         Compute the amount to add or substract from the moisture threshold based on the daily average temperature for the last 5 days:
         - if the daily average temperature has increased constinuously over the 5 days, increase the moisture threshold (positive amount),
@@ -121,11 +121,11 @@ class TemperatureMonitoring:
             previous_temperature = daily_avg_temperature[sorted_dates[i - 1]]
             current_temperature = daily_avg_temperature[sorted_dates[i]]
 
-            # If the temparature increases, add +1 to the variations
+            # If the temperature increases, add +1 to the variations
             if current_temperature > previous_temperature:
                 variations += 1
 
-            # If the temparature decreases, add -1 to the variations
+            # If the temperature decreases, add -1 to the variations
             elif current_temperature < previous_temperature:
                 variations += -1
 
@@ -154,7 +154,8 @@ class TemperatureMonitoring:
         end_date_str = end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Get the list of greenhouses from the catalog
-        greenhouses = requests.get(f"{self.catalogURL}/geenhouses")
+        response = requests.get(f"{self.catalogURL}/getGreenhouses")
+        greenhouses = response.json()
 
         # For each greenhouse
         for greenhouse in greenhouses:
@@ -162,7 +163,7 @@ class TemperatureMonitoring:
             daily_avg_temperature = self.get_temperature_averages(greenhouse, start_date_str, end_date_str)
             
             # Compute the adjustement of the moisture threshold
-            moisture_adjustment = self.compute_moisture_adjustement(daily_avg_temperature)
+            moisture_adjustment = self.compute_moisture_adjustment(daily_avg_temperature)
 
             # If we have to adjust the moisture threshold, publish the adjustment
             if moisture_adjustment != 0:
