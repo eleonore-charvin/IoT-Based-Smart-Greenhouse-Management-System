@@ -24,6 +24,9 @@ class Thingspeak_Adaptor:
         self.port = self.settings["brokerPort"]
         self.topic = self.settings["mqttTopic"] + "/#"
 
+        self.heatingToInt = {"heating_on": 1, "cooling_on": -1, "off": 0}
+        self.irrigationToInt = {"ON": 1, "OFF": 0}
+
         # Create an MQTT client
         self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=self) # uuid is to generate a random string for the client id
         # Start it
@@ -75,17 +78,33 @@ class Thingspeak_Adaptor:
         # Match the measurement with the field
         # In Thingspeak website, we decided that:
         # - field 1 = temperature
-        # - field 2 = moisture of zone 1
-        # - field 3 = moisture of zone 2
-        # ...
-        # - field 8 = moisture of zone 7 (if it exists)
         if decide_measurement == "temperature":
             print("\n \n Temperature Message")
             field_number = 1
+
+        # - field 2 = heating and cooling status
+        elif decide_measurement == "heating_cooling":
+            print("\n \n Heating and cooling Message")
+            field_number = 2
+            message_value = self.heatingToInt[message_value] # convert the value to the corresponding integer
+
+        # - field 3 = sum of irrigation status
+        elif decide_measurement == "irrigation":
+            print("\n \n Irrigation Message")
+            field_number = 3
+            message_value = self.irrigationToInt[message_value] # convert the value to the corresponding integer
+
+        # - field 4 = moisture of zone 1
+        # - field 5 = moisture of zone 2
+        # ...
+        # - field 8 = moisture of zone 5 (if it exists)
         elif decide_measurement == "moisture":
             print("\n \n Moisture Message")
-            if (zoneID > 0) and (zoneID < 8):
-                field_number = zoneID + 1
+            if not ((zoneID > 0) and (zoneID < 6)):
+                raise ValueError(f"Invalid zoneID: {zoneID}")
+            else:
+                field_number = zoneID + 3
+
         else: 
             error = True
 
@@ -112,7 +131,8 @@ class Thingspeak_Adaptor:
             str: write API key of the channel.
         """
         # Get the greenhouse from the catalog
-        greenhouse = requests.get(f"{self.catalogURL}/getGeenhouse?greenhouseID={greenhouseID}")
+        response = requests.get(f"{self.catalogURL}/getGeenhouse?greenhouseID={greenhouseID}")
+        greenhouse = response.json()
         
         # If the greenhouse has a channel, get its write API key
         if "thingspeakChannel" in greenhouse.keys():
@@ -141,13 +161,13 @@ class Thingspeak_Adaptor:
             "api_key": self.userAPIKey,
             "name": name,
             "field1": "Temperature",
-            "field2": "Moisture Zone 1",
-            "field3": "Moisture Zone 2",
-            "field4": "Moisture Zone 3",
-            "field5": "Moisture Zone 4",
-            "field6": "Moisture Zone 5",
-            "field7": "Moisture Zone 6",
-            "field8": "Moisture Zone 7"
+            "field2": "Heating and cooling",
+            "field3": "Total irrigation",
+            "field4": "Moisture Zone 1",
+            "field5": "Moisture Zone 2",
+            "field6": "Moisture Zone 3",
+            "field7": "Moisture Zone 4",
+            "field8": "Moisture Zone 5"
         }
 
         # Create the channel
@@ -199,7 +219,8 @@ class Thingspeak_Adaptor:
         while status == 0:
             response = requests.get(urlToSend)
             status = response.text
-            print(f"Upload status: {status}") # Debugging: Check if it was updated successfully
+            print(f"Upload failed, retrying")
+        print(f"Upload success: {status}")
 
 if __name__ == "__main__":
     # Create an instance of Thingspeak_Adaptor
