@@ -9,7 +9,8 @@ class ActuatorControl:
         self.broker_ip = self.settings["brokerIP"]
         self.broker_port = self.settings["brokerPort"] 
         self.mqtt_topic_base = self.settings["mqttTopic"]
-
+        self.status = self.settings["deviceInfo"]["status"]
+        
         self.greenhouseID = greenhouseID
         self.deviceID = f"temp_act{self.greenhouseID}"  # ID univoco per l'attuatore
 
@@ -24,8 +25,7 @@ class ActuatorControl:
         """Registrazione dell'attuatore nel catalogo."""
         device_info = self.settings["deviceInfo"].copy()  # Copia il template da settings
         device_info["deviceID"] = self.greenhouseID  # Assegna l'ID della serra all'attuatore
-        device_info["deviceName"] = "CoolingAndHeatingActuator"
-        device_info["status"] = "off"
+
         device_info["lastUpdate"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())  # Timestamp
 
         try:

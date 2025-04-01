@@ -4,9 +4,9 @@
     "brokerPort": 1883,
     "heatingcoolingTopic": "group06/SmartGreenhouse/{greenhouseID}/heatingcooling",  
     "deviceInfo": {
-        "deviceName": "TemperatureSensor",
+        "deviceName": "CoolingHeatingActuator",
         "deviceID":"",
-        "status": "",
+        "status": "off",
         "lastUpdated": ""
     }
 }

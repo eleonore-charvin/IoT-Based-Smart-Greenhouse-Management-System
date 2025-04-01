@@ -43,7 +43,7 @@ class TemperatureSensorMQTT:
 
     def notify(self, topic, payload):
         """
-        Riceve i comandi dall'attuatore (come riscaldamento, raffreddamento, etc.)
+        Retreive command from the  actuator and set the heating/cooling state accordingly.
         """
         if topic == self.heatingcoolingTopic:
             try:
@@ -68,8 +68,8 @@ class TemperatureSensorMQTT:
 
     def read_temperature_value(self):
         """
-        Simula la lettura della temperatura.
-        La temperatura viene modificata in base allo stato di riscaldamento/raffreddamento.
+        Simulate the reading of the temperature value.
+        In a real scenario, this would be replaced with actual sensor reading logic.
         """
         if self.heating:
             self.current_temperature = min(self.previous_temperature + random.uniform(0.3, 0.8), 35.0)
@@ -81,9 +81,9 @@ class TemperatureSensorMQTT:
         self.previous_temperature = self.current_temperature
         return round(self.current_temperature, 1) 
 
-    def publish_temperature(self):
+    def publish(self):
         """
-        Pubblica la temperatura attuale nel topic, ma stampa il messaggio completo a video.
+        PUblish the temperature value to the topic MQTT.
         """
         temperature = self.read_temperature_value()
 
@@ -107,11 +107,11 @@ if __name__ == '__main__':
         sensors.append(sensor)
 
     print("Temperature sensors started.")
-
+    
     try:
         while True:
             for sensor in sensors:
-                sensor.publish_temperature()
+                sensor.publish()
             time.sleep(10) 
     except KeyboardInterrupt:
         print("Stopping sensors...")

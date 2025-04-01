@@ -10,6 +10,7 @@ class TemperatureControl:
         self.catalogURL = self.settings["catalogURL"]
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"]
+        self.serviceInfo = self.settings["serviceInfo"]
         self.greenhouseID = greenhouseID
         self.temperatureTopic = self.settings["temperatureTopic"].format(greenhouseID=self.greenhouseID)
         self.heatingcoolingTopic = self.settings["heatingcoolingTopic"].format(greenhouseID=self.greenhouseID)
@@ -19,6 +20,26 @@ class TemperatureControl:
         self.temp_min = None
         self.temp_max = None
         self.current_temperature = None
+
+    def getCatalog(self):
+        greenhouses = []
+        try:
+            response = requests.get(f"{self.catalogURL}/greenhouses")
+            if response.status_code == 200:
+                greenhouses = response.json().get('greenhousesList', [])
+                print("Catalogo recuperato con successo.")
+            else:
+                print("Errore nel recupero del catalogo.")
+        except Exception as e:
+            print(f"Errore nella richiesta al catalogo: {e}")
+    ##################àaggiungere parte per chiamare la funzione più volte per ogni serra
+    def registerService(self):
+        self.serviceInfo['last_update']=self.actualTime
+        requests.post(f'{self.catalogURL}/services',data=json.dumps(self.serviceInfo))
+    
+    def updateService(self):
+        self.serviceInfo['last_update']=self.actualTime
+        requests.put(f'{self.catalogURL}/services',data=json.dumps(self.serviceInfo))
 
     def get_temperature_range(self):
         """Recupera il range di temperatura accettabile dal catalogo."""
@@ -60,13 +81,13 @@ class TemperatureControl:
             return
 
         if self.current_temperature < self.temp_min:
-            self.publish_command("heating_on")
+            self.publish("heating_on")
         elif self.current_temperature > self.temp_max:
-            self.publish_command("cooling_on")
+            self.publish("cooling_on")
         else:
-            self.publish_command("off")
+            self.publish("off")
 
-    def publish_command(self, command):
+    def publish(self, command):
         """Pubblica il comando sul topic /heatingcoolingTopic."""
         message = {
             "command": command
@@ -90,27 +111,19 @@ class TemperatureControl:
 if __name__ == "__main__":
     settings = json.load(open("settings.json"))
 
-    try:
-        response = requests.get(f"{settings['catalogURL']}/greenhouses")
-        greenhouses = response.json().get('greenhousesList', [])
-    except Exception as e:
-        print(f"Error fetching greenhouses: {e}")
-        greenhouses = []
-
-    controllers = []  # Lista per gestire più serre
-
-    for greenhouse in greenhouses:
-        greenhouseID = greenhouse["greenhouseID"]
-        controller = TemperatureControl(settings, greenhouseID)
-        controllers.append(controller)
-        controller.start() 
+    controller = TemperatureControl(settings)
+    controller.start() 
 
     print("Temperature controllers started.")
 
     try:
+        counter=0
         while True:
-            time.sleep(10)
+            time.sleep(2)
+            counter+=1
+            if counter==20:
+                controller.updateService()
+                counter=0
     except KeyboardInterrupt:
-        print("Stopping controllers...")
-        for controller in controllers:
-            controller.stop()
+        controller.stop()
+        print("Thingspeak Adaptor Stopped")
