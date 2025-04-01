@@ -1,41 +1,49 @@
 import json
 import requests
-from MyMQTT import *
+import uuid
 import time
+from MyMQTT import *
 
+################à finireeeee
 class ActuatorControl:
     def __init__(self, settings, greenhouseID):
         self.settings = settings
         self.broker_ip = self.settings["brokerIP"]
         self.broker_port = self.settings["brokerPort"] 
-        self.mqtt_topic_base = self.settings["mqttTopic"]
+
+        self.greenhouseID = greenhouseID
+        self.heatingcoolingTopic = self.settings["heatingcoolingTopic"].format(greenhouseID=self.greenhouseID)
         self.status = self.settings["deviceInfo"]["status"]
         
-        self.greenhouseID = greenhouseID
-        self.deviceID = f"temp_act{self.greenhouseID}"  # ID univoco per l'attuatore
+        self.deviceInfo = self.settings["deviceInfo"]
 
-        self.client = MyMQTT(self.deviceID, self.broker_ip, self.broker_port, self)
+        self.deviceID = f"TemperatureActuator{self.greenhouseID}"  # example: TemperatureActuator1
 
-        self.actuator_topic = f"{self.mqtt_topic_base}Greenhouse{self.greenhouseID}/actuator"
+        self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=None)
 
-        self.register_device()
-        self.startMQTT()
+        #????????self.actuator_topic = f"{self.heatingcoolingTopic}Greenhouse{self.greenhouseID}/actuator"
 
-    def register_device(self):
-        """Registrazione dell'attuatore nel catalogo."""
-        device_info = self.settings["deviceInfo"].copy()  # Copia il template da settings
-        device_info["deviceID"] = self.greenhouseID  # Assegna l'ID della serra all'attuatore
+        self.start()
+        self.registerDevice() # register the device in the catalog
+        
+    def registerDevice(self):
+        """
+        Register the service in the catalog
+        """     
+        actualTime = time.time()
+        self.deviceInfo["lastUpdate"] = actualTime
+        self.deviceInfo["deviceID"] = self.deviceID
+        self.deviceInfo["greenhouseID"] = self.greenhouseID
+        requests.post(f"{self.settings['catalogURL']}/devices", data=json.dumps(self.deviceInfo))
 
-        device_info["lastUpdate"] = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())  # Timestamp
-
-        try:
-            response = requests.post(f"{self.settings['catalogURL']}/devices", data=json.dumps(device_info))
-            if response.status_code == 200:
-                print(f"[{self.deviceID}] Actuator registered in catalog successfully.")
-            else:
-                print(f"[{self.deviceID}] Failed to register actuator in catalog.")
-        except Exception as e:
-            print(f"[{self.deviceID}] Error registering actuator in catalog: {e}")
+    def updateDevice(self):
+        """
+        Update the service registration in the catalog
+        """
+        actualTime = time.time()
+        self.deviceInfo["lastUpdate"] = actualTime
+        requests.put(f"{self.settings['catalogURL']}/devices", data=json.dumps(self.deviceInfo))
+        
 
     def notify(self, topic, payload):
         """Riceve i comandi dal topic MQTT e stampa lo stato dell'attuatore."""
@@ -58,13 +66,13 @@ class ActuatorControl:
         except Exception as e:
             print(f"[{self.deviceID}] Error processing MQTT message: {e}")
 
-    def startMQTT(self):
+    def start(self):
         """Avvia il client MQTT e si sottoscrive al topic dell'attuatore."""
-        self.client.start()
-        self.client.mySubscribe(self.actuator_topic)
+        self.mqttClient.start()
+        self.mqttClient.mySubscribe(self.actuator_topic)
         print(f"[{self.deviceID}] Actuator control system started, listening on {self.actuator_topic}")
 
-    def stopMQTT(self):
+    def stop(self):
         """Ferma il client MQTT."""
         self.client.stop()
         print(f"[{self.deviceID}] Actuator control system stopped.")
@@ -79,8 +87,7 @@ if __name__ == "__main__":
         print(f"Error fetching greenhouses: {e}")
         greenhouses = []
 
-    actuators = []  # Lista per mantenere le istanze degli attuatori
-
+    actuators = [] 
     for greenhouse in greenhouses:
         greenhouseID = greenhouse["greenhouseID"]
         actuator = ActuatorControl(settings, greenhouseID)
@@ -90,8 +97,11 @@ if __name__ == "__main__":
 
     try:
         while True:
-            pass  # Mantiene il programma in esecuzione
+            for actuator in actuators:
+                actuator.updateDevice()
+
+            time.sleep(10)
     except KeyboardInterrupt:
         print("Stopping actuators...")
         for actuator in actuators:
-            actuator.stopMQTT()
+            actuator.stop()

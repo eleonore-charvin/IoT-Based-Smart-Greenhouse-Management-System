@@ -5,8 +5,8 @@
     "temperatureTopic": "group06/SmartGreenhouse/{greenhouseID}/temp",
     "heatingcoolingTopic": "group06/SmartGreenhouse/{greenhouseID}/heatingcooling",
     "serviceInfo": {
-         "ID": 123,
-         "serviceName": "TemperatureControl",
+        "serviceName": "TemperatureControl", 
+        "serviceID": 123,
          "lastUpdated": ""
      }
 }

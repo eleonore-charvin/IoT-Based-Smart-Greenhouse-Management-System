@@ -5,15 +5,14 @@ import uuid
 from MyMQTT import *
 
 class TemperatureControl:
-    def __init__(self, settings, greenhouseID):
+    def __init__(self, settings):
         self.settings = settings
         self.catalogURL = self.settings["catalogURL"]
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"]
         self.serviceInfo = self.settings["serviceInfo"]
-        self.greenhouseID = greenhouseID
-        self.temperatureTopic = self.settings["temperatureTopic"].format(greenhouseID=self.greenhouseID)
-        self.heatingcoolingTopic = self.settings["heatingcoolingTopic"].format(greenhouseID=self.greenhouseID)
+        # self.temperatureTopic = self.settings["temperatureTopic"].format(greenhouseID=self.greenhouseID)
+        # self.heatingcoolingTopic = self.settings["heatingcoolingTopic"].format(greenhouseID=self.greenhouseID)
 
         self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=self)
 
@@ -21,25 +20,32 @@ class TemperatureControl:
         self.temp_max = None
         self.current_temperature = None
 
+        self.mqttClient.start() 
+
     def getCatalog(self):
-        greenhouses = []
         try:
-            response = requests.get(f"{self.catalogURL}/greenhouses")
-            if response.status_code == 200:
-                greenhouses = response.json().get('greenhousesList', [])
-                print("Catalogo recuperato con successo.")
-            else:
-                print("Errore nel recupero del catalogo.")
+            response = requests.get(f"{settings['catalogURL']}/greenhouses") # get the list of greenhouses
+            self.greenhouses = response.json().get('greenhousesList', [])
         except Exception as e:
-            print(f"Errore nella richiesta al catalogo: {e}")
-    ##################àaggiungere parte per chiamare la funzione più volte per ogni serra
+            print(f"Error fetching greenhouses: {e}")
+            self.greenhouses = []
+
+    ################## aggiungere parte per chiamare la funzione più volte per ogni serra
     def registerService(self):
-        self.serviceInfo['last_update']=self.actualTime
-        requests.post(f'{self.catalogURL}/services',data=json.dumps(self.serviceInfo))
+        """
+        Register the service in the catalog
+        """
+        actualTime = time.time()
+        self.serviceInfo["lastUpdate"] = actualTime
+        requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
     
     def updateService(self):
-        self.serviceInfo['last_update']=self.actualTime
-        requests.put(f'{self.catalogURL}/services',data=json.dumps(self.serviceInfo))
+        """
+        Update the service registration in the catalog
+        """
+        actualTime = time.time()
+        self.serviceInfo["lastUpdate"] = actualTime
+        requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
 
     def get_temperature_range(self):
         """Recupera il range di temperatura accettabile dal catalogo."""
@@ -112,18 +118,20 @@ if __name__ == "__main__":
     settings = json.load(open("settings.json"))
 
     controller = TemperatureControl(settings)
-    controller.start() 
+    print("Starting Temperature Controller...")
 
-    print("Temperature controllers started.")
-
+    controller.registerService()
+    
     try:
-        counter=0
+        counter = 0
         while True:
             time.sleep(2)
-            counter+=1
-            if counter==20:
+            counter += 1
+            # Every 40s
+            if counter == 20:
                 controller.updateService()
-                counter=0
+                counter = 0
+
     except KeyboardInterrupt:
         controller.stop()
-        print("Thingspeak Adaptor Stopped")
+        print("Temperature Controller Stopped")
