@@ -1,15 +1,15 @@
 import json
 import requests
 import uuid
+import cherrypy
 import time
 from MyMQTT import *
 
-################à finireeeee
 class ActuatorControl:
     def __init__(self, settings, greenhouseID):
         self.settings = settings
-        self.broker_ip = self.settings["brokerIP"]
-        self.broker_port = self.settings["brokerPort"] 
+        self.broker = self.settings["brokerIP"]
+        self.port = self.settings["brokerPort"] 
 
         self.greenhouseID = greenhouseID
         self.heatingcoolingTopic = self.settings["heatingcoolingTopic"].format(greenhouseID=self.greenhouseID)
@@ -21,60 +21,70 @@ class ActuatorControl:
 
         self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=None)
 
-        #????????self.actuator_topic = f"{self.heatingcoolingTopic}Greenhouse{self.greenhouseID}/actuator"
-
         self.start()
         self.registerDevice() # register the device in the catalog
-        
+
     def registerDevice(self):
         """
-        Register the service in the catalog
-        """     
-        actualTime = time.time()
-        self.deviceInfo["lastUpdate"] = actualTime
-        self.deviceInfo["deviceID"] = self.deviceID
-        self.deviceInfo["greenhouseID"] = self.greenhouseID
-        requests.post(f"{self.settings['catalogURL']}/devices", data=json.dumps(self.deviceInfo))
+        Register the device in the catalog
+        """  
+        try:   
+            actualTime = time.time()
+            self.deviceInfo["lastUpdate"] = actualTime
+            self.deviceInfo["deviceID"] = self.deviceID
+            self.deviceInfo["greenhouseID"] = self.greenhouseID
+            response = requests.post(f"{self.catalogURL}/devices", data=json.dumps(self.deviceInfo))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error registering device in the catalog: {e}")
 
     def updateDevice(self):
         """
-        Update the service registration in the catalog
+        Update the device registration in the catalog
         """
-        actualTime = time.time()
-        self.deviceInfo["lastUpdate"] = actualTime
-        requests.put(f"{self.settings['catalogURL']}/devices", data=json.dumps(self.deviceInfo))
-        
-
+        try:
+            actualTime = time.time()
+            self.deviceInfo["lastUpdate"] = actualTime
+            response = requests.post(f"{self.catalogURL}/devices", data=json.dumps(self.deviceInfo))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error registering device in the catalog: {e}")
+    
     def notify(self, topic, payload):
         """Riceve i comandi dal topic MQTT e stampa lo stato dell'attuatore."""
         try:
             data = json.loads(payload)
             command = data.get("command", {})
 
-            heating = command.get("heating", "off")
-            cooling = command.get("cooling", "off")
-
-            if heating == "on" and cooling == "off":
-                print(f"[{self.deviceID}] Heating system is ON. The greenhouse is warming up.")
-            elif cooling == "on" and heating == "off":
-                print(f"[{self.deviceID}] Cooling system is ON. The greenhouse is cooling down.")
-            elif heating == "off" and cooling == "off":
-                print(f"[{self.deviceID}] All systems are OFF. Temperature is within the desired range.")
+            if command == "heating":
+                self.status = "heating"
+                print(f"[{self.deviceID}] Heating is ON.")
+            elif command == "cooling":
+                self.status = "cooling"
+                print(f"[{self.deviceID}] Cooling is ON.")
+            elif command == "off":
+                self.status = "off"
+                print(f"[{self.deviceID}] Actuators are OFF.")
             else:
-                print(f"[{self.deviceID}] Invalid command received.")
-
+                print(f"[{self.deviceID}] Unknown command received: {command}")
+        except json.JSONDecodeError:
+            print(f"[{self.deviceID}] Error in the format of the MQTT message.")
         except Exception as e:
-            print(f"[{self.deviceID}] Error processing MQTT message: {e}")
+            print(f"[{self.deviceID}] Error in the message: {e}")
 
     def start(self):
         """Avvia il client MQTT e si sottoscrive al topic dell'attuatore."""
         self.mqttClient.start()
-        self.mqttClient.mySubscribe(self.actuator_topic)
-        print(f"[{self.deviceID}] Actuator control system started, listening on {self.actuator_topic}")
+        self.mqttClient.mySubscribe(self.heatingcoolingTopic)
+        print(f"[{self.deviceID}] Actuator control system started, listening on {self.heatingcoolingTopic}")
 
     def stop(self):
         """Ferma il client MQTT."""
-        self.client.stop()
+        self.mqttClient.stop()
         print(f"[{self.deviceID}] Actuator control system stopped.")
 
 if __name__ == "__main__":
@@ -93,11 +103,12 @@ if __name__ == "__main__":
         actuator = ActuatorControl(settings, greenhouseID)
         actuators.append(actuator)
 
-    print("Actuator control systems started.")
+    print("Actuator control systems started...") 
 
     try:
         while True:
             for actuator in actuators:
+                time.sleep(5)
                 actuator.updateDevice()
 
             time.sleep(10)

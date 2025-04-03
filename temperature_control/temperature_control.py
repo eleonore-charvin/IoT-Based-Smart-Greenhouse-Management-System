@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import uuid
+import cherrypy
 from MyMQTT import *
 
 class TemperatureControl:
@@ -11,8 +12,8 @@ class TemperatureControl:
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"]
         self.serviceInfo = self.settings["serviceInfo"]
-        # self.temperatureTopic = self.settings["temperatureTopic"].format(greenhouseID=self.greenhouseID)
-        # self.heatingcoolingTopic = self.settings["heatingcoolingTopic"].format(greenhouseID=self.greenhouseID)
+        self.temperatureTopic = self.settings["temperatureTopic"].format(greenhouseID='+')
+        self.heatingcoolingTopic = self.settings["heatingcoolingTopic"]
 
         self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=self)
 
@@ -22,39 +23,44 @@ class TemperatureControl:
 
         self.mqttClient.start() 
 
-    def getCatalog(self):
-        try:
-            response = requests.get(f"{settings['catalogURL']}/greenhouses") # get the list of greenhouses
-            self.greenhouses = response.json().get('greenhousesList', [])
-        except Exception as e:
-            print(f"Error fetching greenhouses: {e}")
-            self.greenhouses = []
-
-    ################## aggiungere parte per chiamare la funzione più volte per ogni serra
     def registerService(self):
         """
         Register the service in the catalog
         """
-        actualTime = time.time()
-        self.serviceInfo["lastUpdate"] = actualTime
-        requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
-    
+        try:
+            actualTime = time.time()
+            self.serviceInfo["lastUpdate"] = actualTime
+            response = requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering service: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error registering service in the catalog: {e}")
+        
     def updateService(self):
         """
         Update the service registration in the catalog
         """
-        actualTime = time.time()
-        self.serviceInfo["lastUpdate"] = actualTime
-        requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+        try:
+            actualTime = time.time()
+            self.serviceInfo["lastUpdate"] = actualTime
+            response = requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while updating service: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error updating service in the catalog: {e}")
 
-    def get_temperature_range(self):
-        """Recupera il range di temperatura accettabile dal catalogo."""
+    def get_temperature_range(self,greenhouseID):
+        """
+        Recupera il range di temperatura accettabile dal catalogo.
+        """
         try:
             response = requests.get(f"{self.catalogURL}/greenhouses")
             if response.status_code == 200:
                 catalog = response.json()
-                for greenhouse in catalog["greenhousesList"]:
-                    if greenhouse["greenhouseID"] == self.greenhouseID:
+                for greenhouse in catalog["greenhousesList"]: #maybe modify this 
+                    if greenhouse["greenhouseID"] == greenhouseID:
                         min_temp_values = []
                         max_temp_values = []
                         for zone in greenhouse["zones"]:
@@ -63,56 +69,58 @@ class TemperatureControl:
                                     min_temp_values.append(zone_info["temperatureRange"]["min"])
                                     max_temp_values.append(zone_info["temperatureRange"]["max"])
 
-                        self.temp_min = max(min_temp_values)
-                        self.temp_max = min(max_temp_values)
-                        print(f"Temperature range aggiornato: {self.temp_min} - {self.temp_max}")
-                        return
-            print("Errore nel recupero del catalogo")
+                        temp_min = max(min_temp_values)
+                        temp_max = min(max_temp_values)
+                        print(f"Temperature range of greenhouse{greenhouseID}: {temp_min} - {temp_max}")
+                        return temp_min, temp_max
+            print("Error fetching the greenhouse data from the catalog.")
         except Exception as e:
-            print(f"Errore nella richiesta al catalogo: {e}")
+            print(f"Error in the request for the catalog : {e}")
 
-    def temperature_callback(self, topic, payload):
-        """Gestisce i messaggi ricevuti dal sensore di temperatura."""
+    def notify(self, topic, payload):
+        """
+        Gestisce i messaggi ricevuti dal sensore di temperatura.
+        """
+        greenhouseID = topic.split("/")[-2] # prendo l'ID della serra
         try:
             data = json.loads(payload)
-            self.current_temperature = data["e"][0]["v"]
-            print(f"[{self.greenhouseID}] Temperatura ricevuta: {self.current_temperature}")
-            self.control_temperature()
+            current_temperature = data["e"][0]["v"] # temperatura attuale
+            print(f"[{greenhouseID}] Temperatura ricevuta: {current_temperature}")
+            self.control_temperature(current_temperature,greenhouseID)
         except Exception as e:
-            print(f"[{self.greenhouseID}] Errore nella gestione del messaggio MQTT: {e}")
+            print(f"[{greenhouseID}] Errore nella gestione del messaggio MQTT: {e}")
 
-    def control_temperature(self):
-        """Decide se attivare riscaldamento o raffreddamento e pubblica sempre lo stato attuale."""
-        if self.current_temperature is None or self.temp_min is None or self.temp_max is None:
+    def control_temperature(self,current_temperature,greenhouseID):
+        """
+        Decide se attivare riscaldamento o raffreddamento e pubblica sempre lo stato attuale.
+        """
+        temp_min, temp_max = self.get_temperature_range(greenhouseID)
+        if current_temperature is None or temp_min is None or temp_max is None:
             return
 
-        if self.current_temperature < self.temp_min:
-            self.publish("heating_on")
-        elif self.current_temperature > self.temp_max:
-            self.publish("cooling_on")
+        if current_temperature < temp_min:
+            self.publish("heating",greenhouseID)
+        elif current_temperature > temp_max:
+            self.publish("cooling",greenhouseID)
         else:
-            self.publish("off")
+            self.publish("off",greenhouseID)
 
-    def publish(self, command):
-        """Pubblica il comando sul topic /heatingcoolingTopic."""
+    def publish(self, command, greenhouseID):
+        """
+        Pubblica il comando sul topic /heatingcoolingTopic.
+        """
         message = {
             "command": command
         }
-        self.mqttClient.myPublish(self.heatingcoolingTopic, json.dumps(message))
-        print(f"[{self.greenhouseID}] Pubblicato comando: {command}")
+        self.mqttClient.myPublish(self.heatingcoolingTopic.format(greenhouseID=greenhouseID), json.dumps(message))
+        print(f"[{greenhouseID}] Pubblicato comando: {command}")
 
     def start(self):
-        """Avvia il controllo della temperatura."""
-        self.get_temperature_range()
         self.mqttClient.mySubscribe(self.temperatureTopic)
-        self.mqttClient.mySubscribe(self.heatingcoolingTopic)
         self.mqttClient.start()
-        print(f"[{self.greenhouseID}] Controllo della temperatura avviato.")
 
     def stop(self):
-        """Ferma il client MQTT."""
         self.mqttClient.stop()
-        print(f"[{self.greenhouseID}] Controllo della temperatura arrestato.")
 
 if __name__ == "__main__":
     settings = json.load(open("settings.json"))
@@ -134,4 +142,4 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         controller.stop()
-        print("Temperature Controller Stopped")
+        print("Temperature Controller Stopped.")

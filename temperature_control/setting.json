@@ -7,6 +7,6 @@
     "serviceInfo": {
         "serviceName": "TemperatureControl", 
         "serviceID": 123,
-         "lastUpdated": ""
-     }
+        "lastUpdated": ""
+    }
 }

@@ -1,6 +1,7 @@
 import requests
 import json
 import random
+import cherrypy
 import time
 import uuid
 from MyMQTT import *
@@ -8,6 +9,7 @@ from MyMQTT import *
 class TemperatureSensorMQTT:
     def __init__(self, settings, greenhouseID):
         self.settings = settings
+        self.catalogURL = self.settings["catalogURL"]
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"]
 
@@ -28,35 +30,54 @@ class TemperatureSensorMQTT:
         self.heating = False
         self.cooling = False
 
+        self._message = {
+            "v":"",
+            "u":"°C",
+            "t":"",
+            "n":"temperature"
+        }
+
         self.start()
         self.registerDevice() # register the device in the catalog
     
     def registerDevice(self):
         """
-        Register the service in the catalog
-        """     
-        actualTime = time.time()
-        self.deviceInfo["lastUpdate"] = actualTime
-        self.deviceInfo["deviceID"] = self.deviceID
-        self.deviceInfo["greenhouseID"] = self.greenhouseID
-        requests.post(f"{self.settings['catalogURL']}/devices", data=json.dumps(self.deviceInfo))
+        Register the device in the catalog
+        """  
+        try:   
+            actualTime = time.time()
+            self.deviceInfo["lastUpdate"] = actualTime
+            self.deviceInfo["deviceID"] = self.deviceID
+            self.deviceInfo["greenhouseID"] = self.greenhouseID
+            response = requests.post(f"{self.catalogURL}/devices", data=json.dumps(self.deviceInfo))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error registering device in the catalog: {e}")
+
 
     def updateDevice(self):
         """
-        Update the service registration in the catalog
+        Update the device registration in the catalog
         """
-        actualTime = time.time()
-        self.deviceInfo["lastUpdate"] = actualTime
-        requests.put(f"{self.settings['catalogURL']}/devices", data=json.dumps(self.deviceInfo))
+        try:
+            actualTime = time.time()
+            self.deviceInfo["lastUpdate"] = actualTime
+            response = requests.post(f"{self.catalogURL}/devices", data=json.dumps(self.deviceInfo))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error registering device in the catalog: {e}")
     
     def start(self):
         """
         Start the MQTT client and subscribe to the temperature topic
         """
         self.mqttClient.start()
-        self.mqttClient.mySubscribe(self.heatingcoolingTopic)
-        self.mqttClient.mySubscribe(self.temperatureTopic)  
-
+        self.mqttClient.mySubscribe(self.heatingcoolingTopic) # subscribe to the heating/cooling topic 
+    
     def stop(self):
         """
         Stop the MQTT client
@@ -67,31 +88,29 @@ class TemperatureSensorMQTT:
         """
         Retreive command from the actuator and set the heating/cooling state accordingly.
         """
-        if topic == self.heatingcoolingTopic:
-            try:
-                message = json.loads(payload)
-                command = message.get("command")
+        try:
+            message = json.loads(payload)
+            command = message.get("command")
 
-                if command == "heating_on":
-                    self.heating = True
-                    self.cooling = False
-                elif command == "cooling_on":
-                    self.heating = False
-                    self.cooling = True
-                elif command == "off":
-                    self.heating = False
-                    self.cooling = False
-                else:
-                    print(f"[{self.deviceID}] Unknown command: {command}")
-            except json.JSONDecodeError:
-                print(f"[{self.deviceID}] Error in the format of the MQTT message.")
-            except Exception as e:
-                print(f"[{self.deviceID}] Error in the message: {e}")
+            if command == "heating":
+                self.heating = True
+                self.cooling = False
+            elif command == "cooling":
+                self.heating = False
+                self.cooling = True
+            elif command == "off":
+                self.heating = False
+                self.cooling = False
+            else:
+                print(f"[{self.deviceID}] Unknown command: {command}")
+        except json.JSONDecodeError:
+            print(f"[{self.deviceID}] Error in the format of the MQTT message.")
+        except Exception as e:
+            print(f"[{self.deviceID}] Error in the message: {e}")
 
     def simulate_temperature(self):
         """
         Simulate the reading of the temperature value.
-        In a real scenario, this would be replaced with actual sensor reading logic.
         """
         if self.heating:
             self.current_temperature = min(self.previous_temperature + random.uniform(0.3, 0.8), self.max_temperature)
@@ -108,8 +127,11 @@ class TemperatureSensorMQTT:
         PUblish the temperature value to the topic MQTT.
         """
         temperature = self.simulate_temperature()
-
-        self.mqttClient.myPublish(self.temperatureTopic, str(temperature)) # publish the temperature
+        #file di tipo senML
+        message = self._message.copy()
+        message["v"] = temperature
+        message["t"] = time.time()
+        self.mqttClient.myPublish(self.temperatureTopic, json.dumps(message)) # publish the temperature
         print(f"[{self.deviceID}] Published Temperature: {temperature} °C") # print the complete message
 
 if __name__ == '__main__':
@@ -128,7 +150,7 @@ if __name__ == '__main__':
         sensor = TemperatureSensorMQTT(settings, greenhouseID) # create a sensor for each greenhouse
         sensors.append(sensor)
 
-    print("Temperature sensors started.")
+    print("Temperature sensors started...")
     
     try:
         while True:
