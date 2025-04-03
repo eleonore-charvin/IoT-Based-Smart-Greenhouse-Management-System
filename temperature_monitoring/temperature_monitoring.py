@@ -1,4 +1,5 @@
 import requests
+import cherrypy
 import json
 import time
 import datetime
@@ -35,18 +36,30 @@ class TemperatureMonitoring:
         """
         Register the service in the catalog
         """
-        actualTime = time.time()
-        self.serviceInfo["lastUpdate"] = actualTime
-        requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
-    
+        try:
+            actualTime = time.time()
+            self.serviceInfo["lastUpdate"] = actualTime
+            response = requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering service: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error registering service in the catalog: {e}")
+        
     def updateService(self):
         """
         Update the service registration in the catalog
         """
-        actualTime = time.time()
-        self.serviceInfo["lastUpdate"] = actualTime
-        requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
-    
+        try:
+            actualTime = time.time()
+            self.serviceInfo["lastUpdate"] = actualTime
+            response = requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while updating service: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error updating service in the catalog: {e}")
+
     def stop(self):
         """
         Stop the MQTT client
@@ -65,29 +78,47 @@ class TemperatureMonitoring:
         Returns:
             dict: dictionnary of (date of the day, average temperature on this day) pairs.
         """
+        # Check if the greenhouse has a channel
+        if "thingspeakChannel" not in greenhouse.keys():
+            print(f"Cannot retrieve channel for Greenhouse {greenhouse.get("greenhouseID", "Unknown")}")
+            return {}
+        
         # If the greenhouse has a channel, get its ID and read API key
-        if "thingspeakChannel" in greenhouse.keys():
-            thingspeakInfo = greenhouse["thingspeakChannel"]
-            channel_id = thingspeakInfo["channelID"]
-            channel_read_api_key = thingspeakInfo["channelReadAPIkey"]
+        else:
+            thingspeakInfo = greenhouse.get("thingspeakChannel", {})
+            channel_id = thingspeakInfo.get("channelID", "")
+            channel_read_api_key = thingspeakInfo.get("channelReadAPIkey", "")
             
             # Build the URL with time filtering
             field_number = 1 # temperature
             url = f"{self.baseURL}channels/{channel_id}/fields/{field_number}.json?api_key={channel_read_api_key}&start={start_date_str}&end={end_date_str}"
 
             # Fetch data from ThingSpeak
-            response = requests.get(url)
-            data = response.json()
+            try:
+                response = requests.get(url)
+                response.raise_for_status()
+                data = response.json()
+            except json.JSONDecodeError:
+                print("Error decoding JSON response from Thingspeak")
+                return {}
+            except Exception as e:
+                print(f"Error fetching data from Thingspeak: {e}")
+                return {}
+
             feeds = data.get("feeds", [])
 
             # Extract timestamp and temperature values
             daily_temperatures = {}
             for entry in feeds:
                 timestamp = entry["created_at"][:10]  # Extract only the date (YYYY-MM-DD)
-                temp_value = entry.get(f"field{field_number}")
+                temp_value = entry.get(f"field{field_number}", None)
 
                 if temp_value is not None:
-                    temp_value = float(temp_value)
+                    try:
+                        temp_value = float(temp_value)
+                    except ValueError:
+                        print(f"Invalid temperature value: {temp_value}")
+                    
                     if timestamp not in daily_temperatures:
                         daily_temperatures[timestamp] = []
                     daily_temperatures[timestamp].append(temp_value)
@@ -95,9 +126,6 @@ class TemperatureMonitoring:
             # Compute daily averages
             daily_avg_temperature = {date: sum(temps) / len(temps) for date, temps in daily_temperatures.items()}
             return daily_avg_temperature
-            
-        else:
-            print("Cannot retrieve channel for Greenhouse {greenhouseID}")
     
     def compute_moisture_adjustment(self, daily_avg_temperature):
         """
@@ -114,10 +142,11 @@ class TemperatureMonitoring:
         """
         # Sort the dates chronologically
         sorted_dates = sorted(daily_avg_temperature.keys())
+        number_dates = len(sorted_dates)
         variations = 0
 
         # Compare each day with the previous day
-        for i in range(1, len(sorted_dates)):
+        for i in range(1, number_dates):
             previous_temperature = daily_avg_temperature[sorted_dates[i - 1]]
             current_temperature = daily_avg_temperature[sorted_dates[i]]
 
@@ -130,11 +159,11 @@ class TemperatureMonitoring:
                 variations += -1
 
         # If the temperature has increased every day, increment the moisture threshold
-        if variations == len(sorted_dates) - 1:
+        if variations == number_dates - 1:
             return self.moistureIncrement
         
         # If the temperature has decreased every day, decrement the moisture threshold
-        elif variations == -(len(sorted_dates) - 1):
+        elif variations == -(number_dates - 1):
             return - self.moistureIncrement
         
         # Else, don't change the moisture threshold
@@ -154,8 +183,18 @@ class TemperatureMonitoring:
         end_date_str = end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Get the list of greenhouses from the catalog
-        response = requests.get(f"{self.catalogURL}/getGreenhouses")
-        greenhouses = response.json()
+        try:
+            response = requests.get(f"{self.catalogURL}/getGreenhouses")
+            greenhouses = response.json()
+        except json.JSONDecodeError:
+            print("Error decoding JSON response for greenhouses list")
+            return
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while fetching greenhouses list: {e.status} - {e.args[0]}")
+            return
+        except Exception as e:
+            print(f"Error fetching greenhouses list from the catalog: {e}")
+            return
 
         # For each greenhouse
         for greenhouse in greenhouses:
@@ -167,11 +206,11 @@ class TemperatureMonitoring:
 
             # If we have to adjust the moisture threshold, publish the adjustment
             if moisture_adjustment != 0:
-                message_adjustment = self.__message_adjustment
+                message_adjustment = self.__message_adjustment.copy()
                 message_adjustment["greenhouseID"] = greenhouse["greenhouseID"]
                 message_adjustment["moistureThresholdUpdate"] = moisture_adjustment
                 self.mqttClient.myPublish(self.baseTopic, message_adjustment)
-                print(f"Published moisture threshold adjustment for greenhouse {greenhouse["greenhouseID"]}: {moisture_adjustment}")
+                print(f"Published moisture threshold adjustment for greenhouse {greenhouse.get("greenhouseID", "")}: {moisture_adjustment}")
 
 if __name__ == "__main__":
     # Create an instance of TemperatureMonitoring
