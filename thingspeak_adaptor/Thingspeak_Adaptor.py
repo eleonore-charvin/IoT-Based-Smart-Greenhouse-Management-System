@@ -1,7 +1,7 @@
 import requests
+import cherrypy
 import json
 from MyMQTT import *
-import random
 import time
 import uuid
 
@@ -38,17 +38,27 @@ class Thingspeak_Adaptor:
         """
         Register the service in the catalog
         """
-        actualTime = time.time()
-        self.serviceInfo["lastUpdate"] = actualTime
-        requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
-    
+        try:
+            actualTime = time.time()
+            self.serviceInfo["lastUpdate"] = actualTime
+            requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering service: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error registering service in the catalog: {e}")
+        
     def updateService(self):
         """
         Update the service registration in the catalog
         """
-        actualTime = time.time()
-        self.serviceInfo["lastUpdate"] = actualTime
-        requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+        try:
+            actualTime = time.time()
+            self.serviceInfo["lastUpdate"] = actualTime
+            requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while updating service: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error updating service in the catalog: {e}")
 
     def stop(self):
         """
@@ -68,11 +78,18 @@ class Thingspeak_Adaptor:
         # {'bn':f'group06/SmartGreenhouse/{greenhouseID}/{zoneID}','e':[{'n':'humidity','v':'', 't':'','u':'%'}]}
 
         # Decode the message
-        message_decoded = json.loads(payload)
-        message_value = message_decoded["e"][0]["v"]
-        decide_measurement = message_decoded["e"][0]["n"]
-        greenhouseID = int(message_decoded["bn"].split("/")[-2])
-        zoneID = int(message_decoded["bn"].split("/")[-1])
+        try:
+            message_decoded = json.loads(payload)
+            message_value = message_decoded["e"][0]["v"]
+            decide_measurement = message_decoded["e"][0]["n"]
+            greenhouseID = int(message_decoded["bn"].split("/")[-2])
+            zoneID = int(message_decoded["bn"].split("/")[-1])
+        except json.JSONDecodeError:
+            print(f"Error decoding JSON message")
+            return
+        except ValueError:
+            print((f"Invalid greenhouseID or zoneID: {message_decoded["bn"].split("/")[-2]}, {message_decoded["bn"].split("/")[-1]}"))
+
         error = False
 
         # Match the measurement with the field
@@ -101,7 +118,8 @@ class Thingspeak_Adaptor:
         elif decide_measurement == "moisture":
             print("\n \n Moisture Message")
             if not ((zoneID > 0) and (zoneID < 6)):
-                raise ValueError(f"Invalid zoneID: {zoneID}")
+                print(f"Invalid zoneID: {zoneID}")
+                error = True
             else:
                 field_number = zoneID + 3
 
@@ -109,7 +127,7 @@ class Thingspeak_Adaptor:
             error = True
 
         if error:
-            print("Error")
+            print(f"Unrecognised measurement type: {decide_measurement}")
         else:
             print(message_decoded)
 
@@ -131,16 +149,27 @@ class Thingspeak_Adaptor:
             str: write API key of the channel.
         """
         # Get the greenhouse from the catalog
-        response = requests.get(f"{self.catalogURL}/getGeenhouse?greenhouseID={greenhouseID}")
-        greenhouse = response.json()
+        try:
+            response = requests.get(f"{self.catalogURL}/getGeenhouse?greenhouseID={greenhouseID}")
+            greenhouse = response.json()
+        except json.JSONDecodeError:
+            print("Error decoding JSON response for greenhouse")
+            return ""
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while fetching greenhouse: {e.status} - {e.args[0]}")
+            return ""
+        except Exception as e:
+            print(f"Error fetching greenhouse from the catalog: {e}")
+            return ""
         
         # If the greenhouse has a channel, get its write API key
         if "thingspeakChannel" in greenhouse.keys():
-            thingspeakInfo = greenhouse["thingspeakChannel"]
-            channel_write_api_key = thingspeakInfo["channelWriteAPIkey"]
+            thingspeakInfo = greenhouse.get("thingspeakChannel", "")
+            channel_write_api_key = thingspeakInfo.get("channelWriteAPIkey", "")
         
-        # Else, creayte a new channel and get its write API key
+        # Else, create a new channel and get its write API key
         else:
+            print(f"No existing channel for greenhouse {greenhouse.get("greenhouseID", "")}, creating one")
             channel_write_api_key = self.createGreenhouseChannel(greenhouse)
         return channel_write_api_key
         
@@ -156,7 +185,8 @@ class Thingspeak_Adaptor:
         """
         # Define the URL
         urlToSend = f"{self.baseURL}channels.json"
-        name = f"Greenhouse {greenhouse["greenhouseID"]}"
+        greenhouseID = greenhouse.get("greenhouseID", "")
+        name = f"Greenhouse {greenhouseID}"
         params = {
             "api_key": self.userAPIKey,
             "name": name,
@@ -174,17 +204,22 @@ class Thingspeak_Adaptor:
         response = requests.post(urlToSend, data=json.dumps(params))
 
         if response.status_code == 200:
-            channel_info = response.json()
+
+            try:
+                channel_info = response.json()
+            except json.JSONDecodeError:
+                print("Error decoding JSON response from Thingspeak")
+                return ""
 
             # Get the channel information from the response
-            channel_id = channel_info["id"]
+            channel_id = channel_info.get("id", "")
             channel_read_api_key = ""
             channel_write_api_key = ""
-            for api_key in channel_info["api_keys"]:
-                if api_key["write_flag"] == True:
-                    channel_write_api_key = api_key["api_key"]
+            for api_key in channel_info.get("api_keys", []):
+                if api_key.get("write_flag", False) == True:
+                    channel_write_api_key = api_key.get("api_key", "")
                 else:
-                    channel_read_api_key = api_key["api_key"]
+                    channel_read_api_key = api_key.get("api_key", "")
 
             # Update the device in the catalog with the channel information
             thingspeakInfo = {
@@ -193,15 +228,21 @@ class Thingspeak_Adaptor:
                 "channelReadAPIkey": channel_read_api_key
             }
             greenhouse["thingspeakInfo"] = thingspeakInfo
-            requests.put(f"{self.catalogURL}/updateGreenhouse", data=json.dumps(greenhouse))
-            
+            try:
+                requests.put(f"{self.catalogURL}/updateGreenhouse", data=json.dumps(greenhouse))
+            except cherrypy.HTTPError as e: # Catching HTTPError
+                print(f"Error raised by catalog while updating greenhouse {greenhouseID}: {e.status} - {e.args[0]}")
+                return ""
+            except Exception as e:
+                print(f"Error fetching updating greenhouse {greenhouseID} from the catalog: {e}")
+                return ""
+
             print(f"New channel created: {name}")
             return channel_write_api_key
 
         else:
             print(f"Failed to create channel {name}: {response.text}")
         
-
     def uploadThingspeak(self, channel_write_api_key, field_number, field_value):
         """
         Upload a value in a field on Thingspeak.
