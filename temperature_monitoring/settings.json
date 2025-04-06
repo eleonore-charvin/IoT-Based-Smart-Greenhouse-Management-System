@@ -3,9 +3,9 @@
     "thingspeakURL": "https://api.thingspeak.com/",
     "brokerIP": "mqtt.eclipseprojects.io",
     "brokerPort": 1883,
-    "mqttTopic":"group06/SmartGreenhouse/",
+    "mqttTopic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/threshold_update",
     "serviceInfo": {
-        "ID": 4,
+        "serviceID": 4,
         "serviceName": "TemperatureMonitoring",
         "lastUpdated": ""
     },

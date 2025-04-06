@@ -7,7 +7,6 @@ import uuid
 from MyMQTT import *
 
 class TemperatureMonitoring:
-    exposed = True
 
     def __init__(self, settings):
         """
@@ -21,7 +20,7 @@ class TemperatureMonitoring:
         self.catalogURL = self.settings["catalogURL"]
         self.baseURL = self.settings["thingspeakURL"]
         self.serviceInfo = self.settings["serviceInfo"]
-        self.baseTopic = self.settings["mqttTopic"]
+        self.updateTopic = self.settings["mqttTopic"]
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"]
         self.moistureIncrement = self.settings["moistureIncrement"]
@@ -206,11 +205,17 @@ class TemperatureMonitoring:
 
             # If we have to adjust the moisture threshold, publish the adjustment
             if moisture_adjustment != 0:
+                greenhouseID = greenhouse["greenhouseID"]
                 message_adjustment = self.__message_adjustment.copy()
-                message_adjustment["greenhouseID"] = greenhouse["greenhouseID"]
+                message_adjustment["greenhouseID"] = greenhouseID
                 message_adjustment["moistureThresholdUpdate"] = moisture_adjustment
-                self.mqttClient.myPublish(self.baseTopic, message_adjustment)
-                print(f"Published moisture threshold adjustment for greenhouse {greenhouse.get("greenhouseID", "")}: {moisture_adjustment}")
+
+                # Publish the message for each zone in the greenhouse
+                for zone in greenhouse["zones"]:
+                    zoneID = zone["zoneID"]
+                    topic = self.updateTopic.format(greenhouseID=greenhouseID, zoneID=zoneID)
+                    self.mqttClient.myPublish(topic, message_adjustment)
+                    print(f"Published moisture threshold adjustment for greenhouse {greenhouseID} zone {zoneID}: {moisture_adjustment}")
 
 if __name__ == "__main__":
     # Create an instance of TemperatureMonitoring
