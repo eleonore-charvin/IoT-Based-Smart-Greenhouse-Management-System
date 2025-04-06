@@ -10,6 +10,7 @@ class ActuatorControl:
         self.settings = settings
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"] 
+        self.catalogURL = self.settings["catalogURL"]
 
         self.greenhouseID = greenhouseID
         self.heatingcoolingTopic = self.settings["heatingcoolingTopic"].format(greenhouseID=self.greenhouseID)
@@ -80,12 +81,10 @@ class ActuatorControl:
         """Avvia il client MQTT e si sottoscrive al topic dell'attuatore."""
         self.mqttClient.start()
         self.mqttClient.mySubscribe(self.heatingcoolingTopic)
-        print(f"[{self.deviceID}] Actuator control system started, listening on {self.heatingcoolingTopic}")
-
+        
     def stop(self):
         """Ferma il client MQTT."""
         self.mqttClient.stop()
-        print(f"[{self.deviceID}] Actuator control system stopped.")
 
 if __name__ == "__main__":
     settings = json.load(open("settings.json"))
