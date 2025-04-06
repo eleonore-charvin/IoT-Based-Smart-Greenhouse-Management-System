@@ -56,6 +56,8 @@ class IrrigationControl:
             data = json.loads(payload.decode())
             zone_id = data["zone_id"]
             moisture_level = data["moisture"]
+            self.fields = self.get_all_fields() #takes the fields every times
+            
         #check if the moisture level is greather or lower than the treshold and put ON/OFF the irrigation command
             if zone_id in self.fields:
                 threshold = self.fields[zone_id]
@@ -72,7 +74,7 @@ class IrrigationControl:
 
     def start(self):
         self.fields = self.get_all_fields()
-        self.client.start()
+        self.client.start() #takes the fields at the beginning of simulation
         self.client.mySubscribe(self.moisture_topic)
         print("Irrigation control ON")
 
