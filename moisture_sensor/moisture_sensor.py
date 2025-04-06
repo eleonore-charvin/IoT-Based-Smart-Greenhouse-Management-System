@@ -6,51 +6,67 @@ import cherrypy
 import uuid
 from MyMQTT import MyMQTT
 
-class SimulatedMoistureSensor:
-    exposed = True 
-
-    def __init__(self, settings, zone_id):
+class MoistureSensor:
+    def __init__(self, settings, greenhouse_id, zone_id):
         self.settings = settings
-        self.catalog_url = settings['catalog_url']
-        self.device_info = settings['device_info'].copy()
+        self.catalog_url = settings['catalogURL']
+        self.device_info = settings['deviceInfo'].copy()
 
         self.device_id = str(uuid.uuid4())
-        self.device_info['ID'] = self.device_id
-        self.device_info['port'] = random.randint(9000, 9999)
+        self.device_info['deviceID'] = self.device_id
+        self.device_info['greenhouseID'] = greenhouse_id
         self.device_info['zoneID'] = zone_id
         self.moisture_level = random.randint(30, 60)
         self.irrigation_on = False
 
         self.mqtt_broker = settings['broker']
         self.mqtt_port = settings['port']
-        self.moisture_topic = f"{settings['moisture_topic']}/{zone_id}"
-        self.irrigation_topic = f"{settings['irrigation_topic']}/{zone_id}"
+        self.moisture_topic = settings['moistureTopic'].format(greenhouseID=greenhouse_id, zoneID=zone_id)
+        self.irrigation_topic = settings['irrigationTopic'].format(greenhouseID=greenhouse_id, zoneID=zone_id)
         self.client_id = str(uuid.uuid1())
         self.client = MyMQTT(self.client_id, self.mqtt_broker, self.mqtt_port, self)
 
         self.zone_id = zone_id
+        self.greenhouse_id = greenhouse_id
+
+        self._message = {
+            "v":"",
+            "u":"%",
+            "t":"",
+            "n":"moisture"
+        }
 
         #register the device to the catalog
-        requests.post(f'{self.catalog_url}/devices', data=json.dumps(self.device_info))
-
-        #takes the greenhouse_id list
-        self.greenhouse_id = self.get_greenhouse_id()
-
+        self.registerDevice()
         self.startSim()
-        
-    #function to get the greenhouse id and realtive zones
-    def get_greenhouse_id(self):
-        try:
-            response = requests.get(f"{self.catalog_url}/greenhouses")
-            catalog = response.json() 
-            for greenhouse in catalog['greenhousesList']:
-                for zone in greenhouse.get('Zones', []):
-                    if zone['ZoneID'] == self.zone_id:
-                        return greenhouse['greenhouseID']
-            return "unknown"
+    
+    def registerDevice(self):
+        """
+        Register the device in the catalog
+        """  
+        try:   
+            actualTime = time.time()
+            self.device_info["lastUpdate"] = actualTime
+            response = requests.post(f"{self.catalog_url}/devices", data=json.dumps(self.device_info))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
         except Exception as e:
-            print(f"Error retrieving greenhouse ID (API /greenhouses): {e}")
-            return "unknown"
+            print(f"Error registering device in the catalog: {e}")
+
+    def updateDevice(self):
+        """
+        Update the device registration in the catalog
+        """
+        try:
+            actualTime = time.time()
+            self.device_info["lastUpdate"] = actualTime
+            response = requests.post(f"{self.catalog_url}/devices", data=json.dumps(self.device_info))
+            response.raise_for_status()
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error registering device in the catalog: {e}")
 
     def notify(self, topic, payload):
         try:
@@ -80,17 +96,8 @@ class SimulatedMoistureSensor:
         message = self._message.copy()
         message["v"] = moisture
         message["t"] = time.time()
-        self.mqttClient.myPublish(self.temperatureTopic, json.dumps(message)) # publish the temperature
-        print(f"[{self.deviceID}] Published moisture: {moisture} %") # print the complete message
-
-    #def GET(self, *uri, **params):
-     #   if len(uri) != 0 and uri[0] == 'moisture':
-      #      return json.dumps({"zone_id": self.zone_id, "moisture": self.update_moisture()})
-       # else:
-        #    return json.dumps(self.device_info)
-
-    def pingCatalog(self):
-        requests.put(f'{self.catalog_url}/devices', data=json.dumps(self.device_info))
+        self.client.myPublish(self.moisture_topic, json.dumps(message)) # publish the temperature
+        print(f"[{self.device_id} - Greenhouse {self.greenhouse_id} zone {self.zone_id}] Published moisture: {moisture} %") # print the complete message
 
 if __name__ == '__main__':
     with open('settings.json') as f:
@@ -104,13 +111,13 @@ if __name__ == '__main__':
         greenhouses = []
 
     sensors = []
-    #for each greenhouse, take the relative ìs zone and for each create a moisture sensor
+    #for each greenhouse, take the relative zones and for each zone create a moisture sensor
     for greenhouse in greenhouses:
-        for zone in greenhouse.get('Zones', []):
-            zone_id = zone['ZoneID']
-            sensor = SimulatedMoistureSensor(settings, zone_id)
+        greenhouse_id = greenhouse["greenhouseID"]
+        for zone in greenhouse.get('zones', []):
+            zone_id = zone['zoneID']
+            sensor = MoistureSensor(settings, greenhouse_id, zone_id)
             sensors.append(sensor)
-            
 
     print("Moisture sensors on.")
 
@@ -118,7 +125,7 @@ if __name__ == '__main__':
         while True:
             for sensor in sensors:
                 sensor.publish()
-                sensor.pingCatalog()
+                sensor.updateDevice()
             time.sleep(10)
     except KeyboardInterrupt:
         print("Sensors stopping...")
