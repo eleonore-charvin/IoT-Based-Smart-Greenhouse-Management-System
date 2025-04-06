@@ -74,21 +74,19 @@ class Thingspeak_Adaptor:
             topic (str): topic of the message.
             payload (json): payload of the message.
         """
-        # Structure of the message:
-        # {'bn':f'group06/SmartGreenhouse/{greenhouseID}/{zoneID}','e':[{'n':'humidity','v':'', 't':'','u':'%'}]}
 
         # Decode the message
         try:
             message_decoded = json.loads(payload)
             message_value = message_decoded["e"][0]["v"]
             decide_measurement = message_decoded["e"][0]["n"]
-            greenhouseID = int(message_decoded["bn"].split("/")[-2])
-            zoneID = int(message_decoded["bn"].split("/")[-1])
+            greenhouseID = int(topic.split("/")[-2])
+            zoneID = int(topic.split("/")[-1])
         except json.JSONDecodeError:
             print(f"Error decoding JSON message")
             return
         except ValueError:
-            print((f"Invalid greenhouseID or zoneID: {message_decoded["bn"].split("/")[-2]}, {message_decoded["bn"].split("/")[-1]}"))
+            print((f"Invalid greenhouseID or zoneID: {topic.split("/")[-2]}, {topic.split("/")[-1]}"))
 
         error = False
 
@@ -111,23 +109,32 @@ class Thingspeak_Adaptor:
             field_number = 3
             message_value = self.irrigationToInt[message_value] # convert the value to the corresponding integer
 
-        # - field 4 = moisture of zone 1
-        # - field 5 = moisture of zone 2
-        # ...
-        # - field 8 = moisture of zone 5 (if it exists)
+        # - fields 4-8 = moisture of one zone
+        # the matching between the field number and the zone id is made in the catalog
         elif decide_measurement == "moisture":
             print("\n \n Moisture Message")
-            if not ((zoneID > 0) and (zoneID < 6)):
-                print(f"Invalid zoneID: {zoneID}")
+
+            # Get the field id of the zone from the catalog
+            try:
+                response = requests.get(f"{self.catalogURL}/getZone?zoneID={zoneID}")
+                zone = response.json()
+                field_number = zone.get("thingspeakFieldID", -1)
+            except json.JSONDecodeError:
+                    print(f"Error decoding JSON response for zone {zoneID}")
+            except cherrypy.HTTPError as e: # Catching HTTPError
+                print(f"Error raised by catalog while fetching zone {zoneID}: {e.status} - {e.args[0]}")
+            except Exception as e:
+                print(f"Error fetching fetching zone {zoneID} from the catalog: {e}")
+
+            if field_number == -1:
+                print(f"No field for zone {zoneID}")
                 error = True
-            else:
-                field_number = zoneID + 3
 
         else: 
             error = True
 
         if error:
-            print(f"Unrecognised measurement type: {decide_measurement}")
+            print(f"Unrecognised measurement type: {decide_measurement} zone {zoneID}")
         else:
             print(message_decoded)
 
@@ -153,13 +160,13 @@ class Thingspeak_Adaptor:
             response = requests.get(f"{self.catalogURL}/getGeenhouse?greenhouseID={greenhouseID}")
             greenhouse = response.json()
         except json.JSONDecodeError:
-            print("Error decoding JSON response for greenhouse")
+            print(f"Error decoding JSON response for greenhouse {greenhouseID}")
             return ""
         except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while fetching greenhouse: {e.status} - {e.args[0]}")
+            print(f"Error raised by catalog while fetching greenhouse {greenhouseID}: {e.status} - {e.args[0]}")
             return ""
         except Exception as e:
-            print(f"Error fetching greenhouse from the catalog: {e}")
+            print(f"Error fetching greenhouse {greenhouseID} from the catalog: {e}")
             return ""
         
         # If the greenhouse has a channel, get its write API key
@@ -186,6 +193,18 @@ class Thingspeak_Adaptor:
         # Define the URL
         urlToSend = f"{self.baseURL}channels.json"
         greenhouseID = greenhouse.get("greenhouseID", "")
+
+        # Map each zone of the greenhouse to a field
+        fieldToZone = {}
+        fields_number  = 0
+        for zone in greenhouse["zones"]:
+            if fields_number < 5:
+                fieldToZone[fields_number] = zone["zoneID"]
+                fields_number += 1
+            else:
+                print(f"Only fields for the 5 1st zones were created\n{len(greenhouse["zones"]) - 5} zones won't be updated on Thingspeak")
+                break
+
         name = f"Greenhouse {greenhouseID}"
         params = {
             "api_key": self.userAPIKey,
@@ -193,11 +212,11 @@ class Thingspeak_Adaptor:
             "field1": "Temperature",
             "field2": "Heating and cooling",
             "field3": "Total irrigation",
-            "field4": "Moisture Zone 1",
-            "field5": "Moisture Zone 2",
-            "field6": "Moisture Zone 3",
-            "field7": "Moisture Zone 4",
-            "field8": "Moisture Zone 5"
+            "field4": f"Moisture Zone {fields_number[0]}",
+            "field5": f"Moisture Zone {fields_number[1]}",
+            "field6": f"Moisture Zone {fields_number[2]}",
+            "field7": f"Moisture Zone {fields_number[3]}",
+            "field8": f"Moisture Zone {fields_number[4]}"
         }
 
         # Create the channel
@@ -221,7 +240,7 @@ class Thingspeak_Adaptor:
                 else:
                     channel_read_api_key = api_key.get("api_key", "")
 
-            # Update the device in the catalog with the channel information
+            # Update the greenhouse in the catalog with the channel information
             thingspeakInfo = {
                 "channelID": channel_id,
                 "channelWriteAPIkey": channel_write_api_key,
@@ -236,7 +255,34 @@ class Thingspeak_Adaptor:
             except Exception as e:
                 print(f"Error fetching updating greenhouse {greenhouseID} from the catalog: {e}")
                 return ""
+            
+            # Update each zone with its corresponding field id in the catalog
+            for field in fieldToZone.keys():
+                zoneID = fieldToZone[field]
 
+                # Get the zone from the catalog
+                try:
+                    response = requests.get(f"{self.catalogURL}/getZone?zoneID={zoneID}")
+                    zone = response.json()
+                except json.JSONDecodeError:
+                    print(f"Error decoding JSON response for zone {zoneID}")
+                except cherrypy.HTTPError as e: # Catching HTTPError
+                    print(f"Error raised by catalog while fetching zone {zoneID}: {e.status} - {e.args[0]}")
+                except Exception as e:
+                    print(f"Error fetching fetching zone {zoneID} from the catalog: {e}")
+                    
+                # Add the field id
+                zone["thingspeakFieldID"] = field
+
+                # Update the zone in the catalog
+                try:
+                    response = requests.put(f"{self.catalogURL}/updateZone", data=json.dumps(zone))
+                except cherrypy.HTTPError as e: # Catching HTTPError
+                    print(f"Error raised by catalog while updating zone {zoneID}: {e.status} - {e.args[0]}")
+                
+                except Exception as e:
+                    print(f"Error fetching updating zone {zoneID} from the catalog: {e}")
+                
             print(f"New channel created: {name}")
             return channel_write_api_key
 

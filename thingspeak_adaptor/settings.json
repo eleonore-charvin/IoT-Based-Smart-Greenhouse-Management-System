@@ -6,7 +6,7 @@
     "brokerPort": 1883,
     "mqttTopic":"group06/SmartGreenhouse/",
     "serviceInfo": {
-        "ID": 3,
+        "serviceID": 3,
         "serviceName": "ThingspeakAdaptor",
         "lastUpdated": ""
     }
