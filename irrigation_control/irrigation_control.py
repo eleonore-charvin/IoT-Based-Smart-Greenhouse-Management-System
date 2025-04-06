@@ -24,7 +24,33 @@ class IrrigationControl:
         except Exception as e:
             print(f"Error fetching catalog: {e}")
         return {}
+    def registerService(self):
+        """
+        Register the service in the catalog
+        """
+        try:
+            actualTime = time.time()
+            self.serviceInfo["lastUpdate"] = actualTime
+            requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while registering service: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error registering service in the catalog: {e}")
+    
+    def updateService(self):
+        """
+        Update the service registration in the catalog
+        """
+        try:
+            actualTime = time.time()
+            self.serviceInfo["lastUpdate"] = actualTime
+            requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+        except cherrypy.HTTPError as e: # Catching HTTPError
+            print(f"Error raised by catalog while updating service: {e.status} - {e.args[0]}")
+        except Exception as e:
+            print(f"Error updating service in the catalog: {e}")
 
+    
     def notify(self, topic, payload):
         try:
             data = json.loads(payload.decode())
@@ -66,12 +92,14 @@ if __name__ == "__main__":
         catalog_url=config["catalog_url"],
         greenhouse_id=config["greenhouse_id"]
     )
+    irrigation_control.registerService()
 
     irrigation_control.start()
 
     try:
         while True:
             time.sleep(10)
+            irrigation_control.updateService()
     except KeyboardInterrupt:
         irrigation_control.stop()
         print("\nExit...")
