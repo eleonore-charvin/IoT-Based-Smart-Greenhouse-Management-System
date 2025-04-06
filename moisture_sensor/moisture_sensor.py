@@ -23,8 +23,8 @@ class SimulatedMoistureSensor:
 
         self.mqtt_broker = settings['broker']
         self.mqtt_port = settings['port']
-        self.moisture_topic = settings['moisture_topic']
-        self.irrigation_topic = settings['irrigation_topic']
+        self.moisture_topic = f"{settings['moisture_topic']}/{zone_id}"
+        self.irrigation_topic = f"{settings['irrigation_topic']}/{zone_id}"
         self.client_id = str(uuid.uuid1())
         self.client = MyMQTT(self.client_id, self.mqtt_broker, self.mqtt_port, self)
 
@@ -76,15 +76,18 @@ class SimulatedMoistureSensor:
         self.client.stop()
 
     def publish(self):
-        message = {"zone_id": self.zone_id, "moisture": self.update_moisture()}
-        self.client.myPublish(self.moisture_topic, message)
-        print(f"Zone {self.zone_id}: Moisture {self.moisture_level}% (Irrigation: {self.irrigation_on})")
+        moisture = self.update_moisture()
+        message = self._message.copy()
+        message["v"] = moisture
+        message["t"] = time.time()
+        self.mqttClient.myPublish(self.temperatureTopic, json.dumps(message)) # publish the temperature
+        print(f"[{self.deviceID}] Published moisture: {moisture} %") # print the complete message
 
-    def GET(self, *uri, **params):
-        if len(uri) != 0 and uri[0] == 'moisture':
-            return json.dumps({"zone_id": self.zone_id, "moisture": self.update_moisture()})
-        else:
-            return json.dumps(self.device_info)
+    #def GET(self, *uri, **params):
+     #   if len(uri) != 0 and uri[0] == 'moisture':
+      #      return json.dumps({"zone_id": self.zone_id, "moisture": self.update_moisture()})
+       # else:
+        #    return json.dumps(self.device_info)
 
     def pingCatalog(self):
         requests.put(f'{self.catalog_url}/devices', data=json.dumps(self.device_info))
@@ -107,6 +110,7 @@ if __name__ == '__main__':
             zone_id = zone['ZoneID']
             sensor = SimulatedMoistureSensor(settings, zone_id)
             sensors.append(sensor)
+            
 
     print("Moisture sensors on.")
 
@@ -114,6 +118,7 @@ if __name__ == '__main__':
         while True:
             for sensor in sensors:
                 sensor.publish()
+                sensor.pingCatalog()
             time.sleep(10)
     except KeyboardInterrupt:
         print("Sensors stopping...")
