@@ -1,12 +1,10 @@
 {
     "catalogURL": "http://catalog",
-    "thingspeakURL": "https://api.thingspeak.com/",
     "broker": "mqtt.eclipseprojects.io",
     "port": 1883,
-    "irrigation_topic": "group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation",
-    "serviceInfo": {
-        "ID": 5,
-        "serviceName": "MoistureActuator",
+    "irrigationTopic": "group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation",
+    "deviceInfo": {
+        "deviceName": "MoistureActuator",
         "lastUpdated": ""
     }
 }
