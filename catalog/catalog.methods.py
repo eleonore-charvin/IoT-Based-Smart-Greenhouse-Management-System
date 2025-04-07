@@ -78,7 +78,7 @@ class CatalogREST(object):
         
         elif uri[0] == 'zones':
             if len(uri) == 3 and uri[1] == 'greenhouse':
-                # Get zones of a specific greenhouse
+                # get zones of a specific greenhouse
                 greenhouseID = int(uri[2])
                 zones = [zone for zone in catalog["ZonesList"] if zone.get("GreenHouseID") == greenhouseID]
                 if zones:
