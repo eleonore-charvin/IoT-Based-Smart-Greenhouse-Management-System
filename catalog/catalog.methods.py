@@ -91,7 +91,7 @@ class CatalogREST(object):
                 greenhouseID = int(params['greenhouseID'])
                 greenhouse = next((gh for gh in catalog["greenhousesList"] if gh["greenhouseID"] == greenhouseID), None)
                 if greenhouse:
-                    output = greenhouse
+                    output = {"greenhousesList": greenhouse}
                 else:
                     raise cherrypy.HTTPError(404, f"Greenhouse with ID {greenhouseID} not found.")
             else:
@@ -115,7 +115,7 @@ class CatalogREST(object):
                 zone = next((z for z in catalog["zonesList"] if z["zoneID"] == zoneID), None)
                 if not zone:
                     raise cherrypy.HTTPError(404, f"Zone with ID {zoneID} not found")
-                output = zone
+                output = {"zonesList": zone}
 
             elif 'greenhouseID' in params:
                 # Return all zones belonging to a greenhouse
