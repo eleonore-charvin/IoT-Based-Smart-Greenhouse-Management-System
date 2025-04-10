@@ -3,34 +3,34 @@ import json
 import time
 
 def addDevice(catalog, devicesInfo):
-    catalog["devices"].append(devicesInfo)
+    catalog["devicesList"].append(devicesInfo)
 
 def updateDevice(catalog, DeviceID, devicesInfo):
-    for i in range(len(catalog["devices"])):
-        device = catalog["devices"][i]
+    for i in range(len(catalog["devicesList"])):
+        device = catalog["devicesList"][i]
         if device['deviceID'] == DeviceID:
-            catalog["devices"][i] = devicesInfo
+            catalog["devicesList"][i] = devicesInfo
 
 def removeDevices(catalog, DeviceID):
-    for i in range(len(catalog["devices"])):
-        device = catalog["devices"][i]
+    for i in range(len(catalog["devicesList"])):
+        device = catalog["devicesList"][i]
         if device['deviceID'] == int(DeviceID):
-            catalog["devices"].pop(i)
+            catalog["devicesList"].pop(i)
 
 def addService(catalog, ServiceInfo):
-    catalog["services"].append(ServiceInfo)
+    catalog["servicesList"].append(ServiceInfo)
 
 def updateService(catalog, ServiceID, ServiceInfo):
-    for i in range(len(catalog["services"])):
-        service = catalog["services"][i]
+    for i in range(len(catalog["servicesList"])):
+        service = catalog["servicesList"][i]
         if service['serviceID'] == ServiceID:
-            catalog["services"][i] = ServiceInfo
+            catalog["servicesList"][i] = ServiceInfo
 
 def removeService(catalog, ServiceID):
-    for i in range(len(catalog["services"])):
-        service = catalog["services"][i]
+    for i in range(len(catalog["servicesList"])):
+        service = catalog["servicesList"][i]
         if service['serviceID'] == int(ServiceID):
-            catalog["services"].pop(i)
+            catalog["servicesList"].pop(i)
 
 def addGreenHouse(catalog, greenhouseID):
     catalog["greenhousesList"].append(greenhouseID)
@@ -81,10 +81,10 @@ class CatalogREST(object):
             output = catalog
 
         elif uri[0] == 'devices':
-            output = {"devices": catalog["devices"]}
+            output = {"devicesList": catalog["devicesList"]}
 
         elif uri[0] == 'services':
-            output = {"services": catalog["services"]}
+            output = {"servicesList": catalog["servicesList"]}
 
         elif uri[0] == 'greenhouses':
             if 'greenhouseID' in params:
@@ -144,17 +144,17 @@ class CatalogREST(object):
         lastUpdate = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
         if uri[0] == 'devices':
-            if any(d['deviceID'] == json_body['deviceID'] for d in catalog["devices"]):
+            if any(d['deviceID'] == json_body['deviceID'] for d in catalog["devicesList"]):
                 raise cherrypy.HTTPError(400, 'DEVICE ALREADY REGISTERED')
             json_body['lastUpdate'] = lastUpdate
-            catalog["devices"].append(json_body)
+            catalog["devicesList"].append(json_body)
             output = f"Device with ID {json_body['deviceID']} has been added"
 
         elif uri[0] == 'services':
-            if any(s['serviceID'] == json_body['serviceID'] for s in catalog["services"]):
+            if any(s['serviceID'] == json_body['serviceID'] for s in catalog["servicesList"]):
                 raise cherrypy.HTTPError(400, 'SERVICE ALREADY REGISTERED')
             json_body['lastUpdate'] = lastUpdate
-            catalog["services"].append(json_body)
+            catalog["servicesList"].append(json_body)
             output = f"Service with ID {json_body['serviceID']} has been added"
 
         elif uri[0] == 'greenhouses':
@@ -278,11 +278,11 @@ class CatalogREST(object):
         resource_id = int(uri[1])
 
         if resource_type == 'devices':
-            catalog["devices"] = [d for d in catalog["devices"] if d["ID"] != resource_id]
+            catalog["devicesList"] = [d for d in catalog["devicesList"] if d["ID"] != resource_id]
             output = f"Device with ID {resource_id} has been removed"
 
         elif resource_type == 'services':
-            catalog["services"] = [s for s in catalog["services"] if s["ID"] != resource_id]
+            catalog["servicesList"] = [s for s in catalog["servicesList"] if s["ID"] != resource_id]
             output = f"Service with ID {resource_id} has been removed"
 
         elif resource_type == 'greenhouses':
