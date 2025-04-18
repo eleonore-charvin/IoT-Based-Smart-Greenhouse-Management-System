@@ -23,7 +23,7 @@ class IrrigationControl:
             params = {"zoneID": zoneID}
             response = requests.get(f"{self.catalog_url}/zones", params=params).json()
             zone = response.get('zonesList', [])[0]
-            threshold = zone.get('moistureRange', 0)
+            threshold = zone.get('moistureThreshold', 0)
             return threshold
         except Exception as e:
             print(f"Error fetching catalog: {e}")
