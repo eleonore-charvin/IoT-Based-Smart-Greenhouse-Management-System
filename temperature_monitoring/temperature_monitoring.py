@@ -183,8 +183,8 @@ class TemperatureMonitoring:
 
         # Get the list of greenhouses from the catalog
         try:
-            response = requests.get(f"{self.catalogURL}/getGreenhouses")
-            greenhouses = response.json()
+            response = requests.get(f"{self.catalogURL}/greenhouses")
+            greenhouses = response.json().get("greenhousesList", [])
         except json.JSONDecodeError:
             print("Error decoding JSON response for greenhouses list")
             return

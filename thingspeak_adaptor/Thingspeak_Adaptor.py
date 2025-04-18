@@ -116,8 +116,9 @@ class Thingspeak_Adaptor:
 
             # Get the field id of the zone from the catalog
             try:
-                response = requests.get(f"{self.catalogURL}/getZone?zoneID={zoneID}")
-                zone = response.json()
+                params = {"zoneID": zoneID}
+                response = requests.get(f"{self.catalogURL}/zones", params=params)
+                zone = response.json().get("zonesList", [])[0]
                 field_number = zone.get("thingspeakFieldID", -1)
             except json.JSONDecodeError:
                     print(f"Error decoding JSON response for zone {zoneID}")
@@ -157,8 +158,9 @@ class Thingspeak_Adaptor:
         """
         # Get the greenhouse from the catalog
         try:
-            response = requests.get(f"{self.catalogURL}/getGeenhouse?greenhouseID={greenhouseID}")
-            greenhouse = response.json()
+            params = {"greenhouseID": greenhouseID}
+            response = requests.get(f"{self.catalogURL}/greenhouses", params=params)
+            greenhouse = response.json().get("greenhousesList", [])[0]
         except json.JSONDecodeError:
             print(f"Error decoding JSON response for greenhouse {greenhouseID}")
             return ""
@@ -248,7 +250,7 @@ class Thingspeak_Adaptor:
             }
             greenhouse["thingspeakInfo"] = thingspeakInfo
             try:
-                requests.put(f"{self.catalogURL}/updateGreenhouse", data=json.dumps(greenhouse))
+                requests.put(f"{self.catalogURL}/greenhouses", data=json.dumps(greenhouse))
             except cherrypy.HTTPError as e: # Catching HTTPError
                 print(f"Error raised by catalog while updating greenhouse {greenhouseID}: {e.status} - {e.args[0]}")
                 return ""
@@ -262,8 +264,9 @@ class Thingspeak_Adaptor:
 
                 # Get the zone from the catalog
                 try:
-                    response = requests.get(f"{self.catalogURL}/getZone?zoneID={zoneID}")
-                    zone = response.json()
+                    params = {"zoneID": zoneID}
+                    response = requests.get(f"{self.catalogURL}/zones", params=params)
+                    zone = response.json().get("zonesList", [])[0]
                 except json.JSONDecodeError:
                     print(f"Error decoding JSON response for zone {zoneID}")
                 except cherrypy.HTTPError as e: # Catching HTTPError
@@ -276,7 +279,8 @@ class Thingspeak_Adaptor:
 
                 # Update the zone in the catalog
                 try:
-                    response = requests.put(f"{self.catalogURL}/updateZone", data=json.dumps(zone))
+                    params = {"greenhouseID": greenhouseID}
+                    response = requests.put(f"{self.catalogURL}/zones", params=params, data=json.dumps(zone))
                 except cherrypy.HTTPError as e: # Catching HTTPError
                     print(f"Error raised by catalog while updating zone {zoneID}: {e.status} - {e.args[0]}")
                 

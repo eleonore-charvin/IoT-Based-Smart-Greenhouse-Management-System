@@ -51,28 +51,26 @@ class TemperatureControl:
         except Exception as e:
             print(f"Error updating service in the catalog: {e}")
 
-    def get_temperature_range(self,greenhouseID):
+    def get_temperature_range(self, greenhouseID):
         """
         Recupera il range di temperatura accettabile dal catalogo.
         """
         try:
-            response = requests.get(f"{self.catalogURL}/greenhouses")
+            params = {"greenhouseID": greenhouseID}
+            response = requests.get(f"{self.catalogURL}/zones", params=params)
             if response.status_code == 200:
-                catalog = response.json()
-                for greenhouse in catalog["greenhousesList"]: #maybe modify this 
-                    if greenhouse["greenhouseID"] == greenhouseID:
-                        min_temp_values = []
-                        max_temp_values = []
-                        for zone in greenhouse["zones"]:
-                            for zone_info in catalog["zonesList"]:
-                                if zone_info["zoneID"] == zone["zoneID"]:
-                                    min_temp_values.append(zone_info["temperatureRange"]["min"])
-                                    max_temp_values.append(zone_info["temperatureRange"]["max"])
+                zones = response.json.get("zonesList", [])
+                min_temp_values = []
+                max_temp_values = []
+                for zone in zones:
+                    temperature_range = zone["temperatureRange"]
+                    min_temp_values.append(temperature_range["min"])
+                    max_temp_values.append(temperature_range["max"])
 
-                        temp_min = max(min_temp_values)
-                        temp_max = min(max_temp_values)
-                        print(f"Temperature range of greenhouse{greenhouseID}: {temp_min} - {temp_max}")
-                        return temp_min, temp_max
+                temp_min = max(min_temp_values)
+                temp_max = min(max_temp_values)
+                print(f"Temperature range of greenhouse{greenhouseID}: {temp_min} - {temp_max}")
+                return temp_min, temp_max
             print("Error fetching the greenhouse data from the catalog.")
         except Exception as e:
             print(f"Error in the request for the catalog : {e}")
