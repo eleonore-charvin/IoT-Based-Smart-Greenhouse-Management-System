@@ -251,7 +251,7 @@ class CatalogREST(object):
 
                     raise cherrypy.HTTPError(400, f'Temperature range overlaps with zone ID {existing_zone["ZoneID"]}')
                 
-            if "moisture_threshold" in json_body:
+            if "moisture_threshold" in json_body.keys():
                 # validate it’s numeric, within 0–100 perhaps
                 new_mt = float(json_body["moisture_threshold"])
                 if not (0 <= new_mt <= 100):
