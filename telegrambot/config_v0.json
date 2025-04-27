@@ -1,0 +1,8 @@
+{
+    "API_BASE": "http://localhost:8080",
+    "MQTT_BROKER": "test.mosquitto.org",
+    "MQTT_PORT": 1883,
+    "MQTT_CLIENT_ID": "telegramBotClient",
+    "TOPIC_PUBLISH": "SmartGreenHouse/{zone_id}/set_moisture"
+  }
+  
