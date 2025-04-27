@@ -250,6 +250,14 @@ class CatalogREST(object):
                             raise cherrypy.HTTPError(400, f'Temperature range of new zone does NOT overlap with existing zone ID {existing_zone["ZoneID"]}')
 
                     raise cherrypy.HTTPError(400, f'Temperature range overlaps with zone ID {existing_zone["ZoneID"]}')
+                
+            if "moisture_threshold" in json_body:
+                # validate it’s numeric, within 0–100 perhaps
+                new_mt = float(json_body["moisture_threshold"])
+                if not (0 <= new_mt <= 100):
+                    raise cherrypy.HTTPError(400, "moisture_threshold must be between 0 and 100")
+                zone["moisture_threshold"] = new_mt
+
 
             json_body['last_update'] = last_update
             catalog["ZonesList"] = [
