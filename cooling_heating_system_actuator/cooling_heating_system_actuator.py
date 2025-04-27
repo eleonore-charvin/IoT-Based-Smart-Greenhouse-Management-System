@@ -33,8 +33,8 @@ class ActuatorControl:
             actualTime = time.time()
             self.deviceInfo["lastUpdate"] = actualTime
             self.deviceInfo["deviceID"] = self.deviceID
-            self.deviceInfo["greenhouseID"] = self.greenhouseID
-            response = requests.post(f"{self.catalogURL}/devices", data=json.dumps(self.deviceInfo))
+            params = {"greenhouseID": self.greenhouseID}
+            response = requests.post(f"{self.catalogURL}/devices", params=params, data=json.dumps(self.deviceInfo))
             response.raise_for_status()
         except cherrypy.HTTPError as e: # Catching HTTPError
             print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
@@ -48,7 +48,7 @@ class ActuatorControl:
         try:
             actualTime = time.time()
             self.deviceInfo["lastUpdate"] = actualTime
-            response = requests.post(f"{self.catalogURL}/devices", data=json.dumps(self.deviceInfo))
+            response = requests.put(f"{self.catalogURL}/devices", data=json.dumps(self.deviceInfo))
             response.raise_for_status()
         except cherrypy.HTTPError as e: # Catching HTTPError
             print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")

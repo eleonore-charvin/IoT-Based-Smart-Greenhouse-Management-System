@@ -6,8 +6,8 @@
         "IP": "test.mosquitto.org",
         "port": 1883
     },
-    "services":[],
-    "devices": [],
+    "servicesList":[],
+    "devicesList": [],
     "usersList": [],
     "zonesList": [],
     "greenhousesList": []

@@ -18,17 +18,16 @@ class IrrigationControl:
         self.catalog_url = settings["catalogURL"]
         self.fields = {}
 
-    def get_all_fields(self):
+    def get_zone_threshold(self, zoneID):
         try:
-            greenhouses = requests.get(f"{self.catalog_url}/greenhouses").json().get('greenhousesList', [])
-            fields = {}
-            for greenhouse in greenhouses:
-                for zone in greenhouse.get("zones", []):
-                    fields[zone["zoneID"]] = zone["Mois_threshold"]["low"]
-            return fields
+            params = {"zoneID": zoneID}
+            response = requests.get(f"{self.catalog_url}/zones", params=params).json()
+            zone = response.get('zonesList', [])[0]
+            threshold = zone.get('moistureThreshold', 0)
+            return threshold
         except Exception as e:
             print(f"Error fetching catalog: {e}")
-        return {}
+        return 0
     
     def registerService(self):
         """
@@ -63,12 +62,10 @@ class IrrigationControl:
             greenhouse_id = topic.split("/")[-3]
             zone_id = topic.split("/")[-2]
             moisture_level = data["e"][0]["v"]
-            ###### replace this by call to catalog function
-            self.fields = self.get_all_fields() #takes the fields every times
             
             #check if the moisture level is greater or lower than the treshold and put ON/OFF the irrigation command
             if zone_id in self.fields:
-                threshold = self.fields[zone_id]
+                threshold = self.get_zone_threshold(zone_id)
                 if moisture_level < threshold:
                     print(f"Greenhouse {greenhouse_id} zone {zone_id}, Moisture level: {moisture_level}, needs water!")
                     irrigation_command = {"command": "ON"}

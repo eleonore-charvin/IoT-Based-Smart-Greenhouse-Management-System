@@ -3,50 +3,67 @@ import json
 import time
 
 def addDevice(catalog, devicesInfo):
-    catalog["devices"].append(devicesInfo)
+    catalog["devicesList"].append(devicesInfo)
 
 def updateDevice(catalog, DeviceID, devicesInfo):
-    for i in range(len(catalog["devices"])):
-        device = catalog["devices"][i]
+    for i in range(len(catalog["devicesList"])):
+        device = catalog["devicesList"][i]
         if device['deviceID'] == DeviceID:
-            catalog["devices"][i] = devicesInfo
+            catalog["devicesList"][i] = devicesInfo
 
 def removeDevices(catalog, DeviceID):
-    for i in range(len(catalog["devices"])):
-        device = catalog["devices"][i]
+    for i in range(len(catalog["devicesList"])):
+        device = catalog["devicesList"][i]
         if device['deviceID'] == int(DeviceID):
-            catalog["devices"].pop(i)
+            catalog["devicesList"].pop(i)
 
 def addService(catalog, ServiceInfo):
-    catalog["services"].append(ServiceInfo)
+    catalog["servicesList"].append(ServiceInfo)
 
 def updateService(catalog, ServiceID, ServiceInfo):
-    for i in range(len(catalog["services"])):
-        service = catalog["services"][i]
+    for i in range(len(catalog["servicesList"])):
+        service = catalog["servicesList"][i]
         if service['serviceID'] == ServiceID:
-            catalog["services"][i] = ServiceInfo
+            catalog["servicesList"][i] = ServiceInfo
 
 def removeService(catalog, ServiceID):
-    for i in range(len(catalog["services"])):
-        service = catalog["services"][i]
+    for i in range(len(catalog["servicesList"])):
+        service = catalog["servicesList"][i]
         if service['serviceID'] == int(ServiceID):
-            catalog["services"].pop(i)
+            catalog["servicesList"].pop(i)
 
-def addGreenHouse(catalog, GreenHouseID):
-    catalog["GreenHouses"].append(GreenHouseID)
+def addGreenHouse(catalog, greenhouseID):
+    catalog["greenhousesList"].append(greenhouseID)
 
-def updateGreenHouse(catalog, GreenHouseID, GreenHouseInfo):
+def updateGreenHouse(catalog, greenhouseID, GreenHouseInfo):
     for i in range(len(catalog["greenhousesList"])):
         greenhouse = catalog["greenhousesList"][i]
-        if greenhouse['greenhouseID'] == GreenHouseID:
+        if greenhouse['greenhouseID'] == greenhouseID:
             catalog["greenhousesList"][i] = GreenHouseInfo
 
-def removeGreenHouse(catalog, GreenHouseID):
+def removeGreenHouse(catalog, greenhouseID):
     for i in range(len(catalog["greenhousesList"])):
         greenhouse = catalog["greenhousesList"][i]
-        if greenhouse['greenhouseID'] == GreenHouseID:
+        if greenhouse['greenhouseID'] == greenhouseID:
             catalog["greenhousesList"].pop(i)
 
+def get_zones_of_greenhouse(catalog, greenhouseID):
+    # Get the list of zone IDs from the greenhouse
+    greenhouse = next((gh for gh in catalog["greenhousesList"] if gh["greenhouseID"] == greenhouseID), None)
+    if not greenhouse:
+        return []
+
+    zone_ids = greenhouse.get("zones", [])
+    return [zone for zone in catalog["zonesList"] if zone["zoneID"] in zone_ids]
+
+def check_range_overlap(existing_zones, zone_temp_range):
+    """
+    Check that zone_temp_range overlaps with all existing_zones
+    """
+    for existing_zone in existing_zones:
+        existing_range = existing_zone["temperatureRange"]
+        overlap = not (zone_temp_range["max"] < existing_range["min"] or zone_temp_range["min"] > existing_range["max"])
+        return overlap
 
 class CatalogREST(object):
     exposed = True
@@ -55,78 +72,350 @@ class CatalogREST(object):
         self.catalog_address = catalog_address
     
     def GET(self, *uri, **params):
-        catalog=json.load(open(self.catalog_address,"r"))
-        if len(uri)==0:   # An error will be raised in case there is no uri 
-            raise cherrypy.HTTPError(status=400, message='UNABLE TO MANAGE THIS URL')
-        elif uri[0]=='all':
+        catalog = json.load(open(self.catalog_address, "r"))
+
+        if len(uri) == 0:
+            raise cherrypy.HTTPError(400, 'UNABLE TO MANAGE THIS URL')
+
+        if uri[0] == 'all':
             output = catalog
-        elif uri[0]=='devices':
-            output = {"devices":catalog["devices"]}
-        elif uri[0]=='services':
-            output = {"services":catalog["services"]}
+
+        elif uri[0] == 'devices':
+            output = {"devicesList": catalog["devicesList"]}
+
+        elif uri[0] == 'services':
+            output = {"servicesList": catalog["servicesList"]}
+
+        elif uri[0] == 'greenhouses':
+            if 'greenhouseID' in params:
+                greenhouseID = int(params['greenhouseID'])
+                greenhouse = next((gh for gh in catalog["greenhousesList"] if gh["greenhouseID"] == greenhouseID), None)
+                if greenhouse:
+                    output = {"greenhousesList": greenhouse}
+                else:
+                    raise cherrypy.HTTPError(404, f"Greenhouse with ID {greenhouseID} not found.")
+            else:
+                output = {"greenhousesList": catalog["greenhousesList"]}
+
+        elif uri[0] == 'zonesID':
+            if 'greenhouseID' not in params:
+                raise cherrypy.HTTPError(400, "Missing 'greenhouseID' parameter")
+
+            greenhouseID = int(params['greenhouseID'])
+            greenhouse = next((gh for gh in catalog["greenhousesList"] if gh["greenhouseID"] == greenhouseID), None)
+            if not greenhouse:
+                raise cherrypy.HTTPError(404, f"Greenhouse with ID {greenhouseID} not found")
+
+            output = {"zones": greenhouse.get("zones", [])}
+
+        elif uri[0] == 'zones':
+            if 'zoneID' in params:
+                # Return one zone by ID
+                zoneID = int(params['zoneID'])
+                zone = next((z for z in catalog["zonesList"] if z["zoneID"] == zoneID), None)
+                if not zone:
+                    raise cherrypy.HTTPError(404, f"Zone with ID {zoneID} not found")
+                output = {"zonesList": zone}
+
+            elif 'greenhouseID' in params:
+                # Return all zones belonging to a greenhouse
+                greenhouseID = int(params['greenhouseID'])
+                greenhouse = next((gh for gh in catalog["greenhousesList"] if gh["greenhouseID"] == greenhouseID), None)
+                if not greenhouse:
+                    raise cherrypy.HTTPError(404, f"Greenhouse with ID {greenhouseID} not found")
+
+                zone_ids = greenhouse.get("zones", [])
+                zones = [z for z in catalog["zonesList"] if z["zoneID"] in zone_ids]
+                output = {"zonesList": zones}
+
+            else:
+                # Return all zones
+                output = {"zonesList": catalog["zonesList"]}
+
+        else:
+            raise cherrypy.HTTPError(400, 'INVALID ENDPOINT')
+
         return json.dumps(output)
 
     def POST(self, *uri, **params):
-        catalog=json.load(open(self.catalog_address,"r"))
+        catalog = json.load(open(self.catalog_address, "r"))
         body = cherrypy.request.body.read()
         json_body = json.loads(body.decode('utf-8'))
-        if uri[0]=='devices':
-            if not any(d['deviceID'] == json_body['deviceID'] for d in catalog["devices"]):
-                last_update = time.time()
-                json_body['lastUpdate'] = last_update
-                addDevice(catalog, json_body)
-                output = f"Device with ID {json_body['deviceID']} has been added"
-                print(output)
-            else:
-                raise cherrypy.HTTPError(status=400, message='DEVICE ALREADY REGISTERED')
-        elif uri[0]=='services':
-            if not any(d['serviceID'] == json_body['serviceID'] for d in catalog["services"]):
-                last_update = time.time()
-                json_body['lastUdate'] = last_update
-                addService(catalog, json_body)
-                output = f"Service with ID {json_body['serviceID']} has been added"
-                print(output)
-            else:
-                raise cherrypy.HTTPError(status=400, message='SERVICE ALREADY REGISTERED')
-        json.dump(catalog,open(self.catalog_address,"w"),indent=4)
-        print(catalog)
-        return output
+        lastUpdate = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
+        if uri[0] == 'devices':
+            if any(d['deviceID'] == json_body['deviceID'] for d in catalog["devicesList"]):
+                raise cherrypy.HTTPError(400, 'DEVICE ALREADY REGISTERED')
+            
+            if 'greenhouseID' in params:
+                # Add the device ID in the greenhouse's devices list
+                greenhouseID = int(params['greenhouseID'])
+                greenhouse = next((gh for gh in catalog["greenhousesList"] if gh["greenhouseID"] == greenhouseID), None)
+                device = {"deviceID": json_body["deviceID"]}
+                greenhouse["devices"].append(device)
 
+            elif 'zoneID' in params:
+                # Add the device ID in the zone's devices list
+                zoneID = int(params['zoneID'])
+                zone = next((zn for zn in catalog["zonesList"] if zn["zonesList"] == zoneID), None)
+                device = {"deviceID": json_body["deviceID"]}
+                zone["devices"].append(device)
+
+            else:
+                raise cherrypy.HTTPError(400, "Missing 'greenhouseID' or 'zoneID' parameter")
+            
+            # Add the device info in the catalog
+            json_body['lastUpdate'] = lastUpdate
+            catalog["devicesList"].append(json_body)
+            output = f"Device with ID {json_body['deviceID']} has been added"
+
+        elif uri[0] == 'services':
+            if any(s['serviceID'] == json_body['serviceID'] for s in catalog["servicesList"]):
+                raise cherrypy.HTTPError(400, 'SERVICE ALREADY REGISTERED')
+            json_body['lastUpdate'] = lastUpdate
+            catalog["servicesList"].append(json_body)
+            output = f"Service with ID {json_body['serviceID']} has been added"
+
+        elif uri[0] == 'greenhouses':
+            if any(gh['greenhouseID'] == json_body['greenhouseID'] for gh in catalog["greenhousesList"]):
+                raise cherrypy.HTTPError(400, 'GREENHOUSE ALREADY REGISTERED')
+            
+            if 'userID' not in params:
+                raise cherrypy.HTTPError(400, "Missing 'userID' parameter")
+
+            # Add the greenhouse info in the catalog
+            json_body['lastUpdate'] = lastUpdate
+            json_body["zones"] = []  # Initialize empty zones list
+            catalog["greenhousesList"].append(json_body)
+
+            # Add the greenhouse id in the user greenhouses list
+            userID = int(params['userID'])
+            user = next((u for u in catalog["usersList"] if u["userID"] == userID), None)
+            greenhouse = {"greenhouseID": greenhouseID}
+            user["greenhouses"].append(greenhouse)
+            output = f"Greenhouse with ID {json_body['greenhouseID']} has been added"
+
+        elif uri[0] == 'zones':
+            if any(zn['zoneID'] == json_body['zoneID'] for zn in catalog["zonesList"]):
+                raise cherrypy.HTTPError(400, 'ZONE ALREADY REGISTERED')
+            
+            if 'greenhouseID' not in params:
+                raise cherrypy.HTTPError(400, "Missing 'greenhouseID' parameter")
+
+            greenhouseID = int(params['greenhouseID'])
+            zone_temp_range = json_body['temperatureRange']  # e.g., [min, max]
+            existing_zones = get_zones_of_greenhouse(catalog, greenhouseID)
+
+            greenhouse = next((gh for gh in catalog["greenhousesList"] if gh["zoneID"] == greenhouseID), None)
+            if not greenhouse:
+                raise cherrypy.HTTPError(404, f'Greenhouse ID {greenhouseID} not found')
+
+            overlap = check_range_overlap(existing_zones, zone_temp_range)
+            if not overlap:
+                raise cherrypy.HTTPError(400, f'Temperature range of new zone does NOT overlap with existing zone ID {existing_zone["ZoneID"]}')
+
+            # If overlaps, add zone
+            json_body['lastUpdate'] = lastUpdate
+            catalog["zonesList"].append(json_body)
+            # Add the zone id in the greenhouse zones list
+            zone = {"zoneID": json_body["zoneID"]}
+            greenhouse["zones"].append(zone)
+            output = f"Zone with ID {json_body['zoneID']} added to Greenhouse {greenhouseID}"
+
+        elif uri[0] == 'users':
+            if any(user['userID'] == json_body['userID'] for user in catalog["usersList"]):
+                raise cherrypy.HTTPError(400, 'USER ALREADY REGISTERED')
+            json_body['lastUpdate'] = lastUpdate
+            catalog["usersList"].append(json_body)
+            output = f"User with ID {json_body['userID']} has been added"
+
+        else:
+            raise cherrypy.HTTPError(400, 'INVALID ENDPOINT')
+        catalog["lastUpdate"] = lastUpdate
+        json.dump(catalog, open(self.catalog_address, "w"), indent=4)
+
+        print(output)
+        return json.dumps({"message": output})
+    
     def PUT(self, *uri, **params):
-        catalog=json.load(open(self.catalog_address,"r"))
+        catalog = json.load(open(self.catalog_address, "r"))
         body = cherrypy.request.body.read()
         json_body = json.loads(body.decode('utf-8'))
-        if uri[0]=='devices':
-            if not any(d['deviceID'] == json_body['deviceID'] for d in catalog["devices"]):
-                raise cherrypy.HTTPError(status=400, message='DEVICE NOT FOUND')
-            else:
-                last_update = time.time()
-                json_body['lastUpdate'] = last_update
-                updateDevice(catalog, json_body['deviceID'], json_body)
-        elif uri[0]=='services':
-            if not any(d['serviceID'] == json_body['serviceID'] for d in catalog["services"]):
-                raise cherrypy.HTTPError(status=400, message='SERVICE NOT FOUND')
-            else:
-                last_update = time.time()
-                json_body['lastUpdate'] = last_update
-                updateService(catalog, json_body['serviceID'], json_body)
-        print(catalog)
-        json.dump(catalog,open(self.catalog_address,"w"),indent=4)
-        return json_body
-        
-    def DELETE(self, *uri):
-        catalog=json.load(open(self.catalog_address,"r"))
-        if uri[0]=='devices':
-            removeDevices(catalog,uri[1])
-            output = f"Device with ID {uri[1]} has been removed"
-            print(output)
-        elif uri[0]=='services':
-            catalog = removeService(catalog,uri[1])
-            output = f"Service with ID {uri[0]} has been removed"
-            print(output)
-        json.dump(catalog,open(self.catalog_address,"w"),indent=4)
+        last_update = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
+        if uri[0] == 'devices':
+            # Get greenhouseID from body
+            deviceID = json_body['deviceID']
+            device = next((d for d in catalog["devicesList"] if d["deviceID"] == deviceID), None)
+
+            if not device:
+                raise cherrypy.HTTPError(404, f'Device with ID {deviceID} not found')
+
+            catalog["devicesList"] = [
+                json_body if d["deviceID"] == deviceID else d 
+                for d in catalog["devicesList"]
+            ]
+
+            output = f"Device with ID {deviceID} updated successfully"
+
+        elif uri[0] == 'services':
+            # Get greenhouseID from body
+            serviceID = json_body['serviceID']
+            service = next((s for s in catalog["servicesList"] if s["serviceID"] == serviceID), None)
+
+            if not service:
+                raise cherrypy.HTTPError(404, f'Service with ID {serviceID} not found')
+
+            catalog["servicesList"] = [
+                json_body if s["serviceID"] == serviceID else s 
+                for s in catalog["servicesList"]
+            ]
+
+            output = f"Service with ID {serviceID} updated successfully"
+
+        elif uri[0] == 'greenhouses':
+            # Get greenhouseID from body
+            greenhouseID = json_body['greenhouseID']
+            greenhouse = next((gh for gh in catalog["greenhousesList"] if gh["greenhouseID"] == greenhouseID), None)
+
+            if not greenhouse:
+                raise cherrypy.HTTPError(404, f'Greenhouse with ID {greenhouseID} not found')
+
+            catalog["greenhousesList"] = [
+                json_body if gh["greenhouseID"] == greenhouseID else gh 
+                for gh in catalog["greenhousesList"]
+            ]
+
+            output = f"Greenhouse with ID {greenhouseID} updated successfully"
+
+        elif uri[0] == 'zones':
+            if 'greenhouseID' not in params:
+                raise cherrypy.HTTPError(400, "Missing 'greenhouseID' parameter")
+
+            greenhouseID = int(params['greenhouseID'])
+            zone = next((z for z in catalog["zonesList"] if z["zoneID"] == json_body["zoneID"]), None)
+            if not zone:
+                raise cherrypy.HTTPError(404, 'ZONE NOT FOUND')
+
+            new_range = json_body["temperatureRange"]
+
+            existing_zones = get_zones_of_greenhouse(catalog, greenhouseID)
+            overlap = check_range_overlap(existing_zones, new_range)
+            if not overlap:
+                raise cherrypy.HTTPError(400, f'Temperature range of new zone does NOT overlap with existing zone ID {existing_zone["ZoneID"]}')
+
+            # If overlaps, update zone
+            json_body['lastUpdate'] = last_update
+            catalog["zonesList"] = [
+                json_body if z["zoneID"] == json_body["zoneID"] else z 
+                for z in catalog["zonesList"]
+            ]
+            output = f"Zone with ID {json_body['zoneID']} updated successfully"
+
+        elif uri[0] == 'users':
+            user = next((u for u in catalog["usersList"] if u["userID"] == json_body["userID"]), None)
+            if not user:
+                raise cherrypy.HTTPError(404, 'USER NOT FOUND')
+
+            json_body['lastUpdate'] = last_update
+            catalog["usersList"] = [
+                json_body if u["userID"] == json_body["userID"] else u 
+                for u in catalog["usersList"]
+            ]
+            output = f"User with ID {json_body['userID']} updated successfully"
+
+        else:
+            raise cherrypy.HTTPError(400, 'INVALID ENDPOINT')
+
+        catalog["lastUpdate"] = last_update
+        json.dump(catalog, open(self.catalog_address, "w"), indent=4)
+        print(output)
+        return json.dumps({"message": output})
+
+
+    def DELETE(self, *uri):
+        catalog = json.load(open(self.catalog_address, "r"))
+
+        if len(uri) < 2:
+            raise cherrypy.HTTPError(400, 'Missing resource ID in DELETE request')
+
+        resource_type = uri[0]
+        resource_id = int(uri[1])
+
+        if resource_type == 'devices':
+            device = next((d for d in catalog["devicesList"] if d["deviceID"] == resource_id), None)
+            if not device:
+                raise cherrypy.HTTPError(404, f"Device with ID {resource_id} not found")
+
+            # Remove device from devicesList
+            catalog["devicesList"] = [d for d in catalog["devicesList"] if d["deviceID"] != resource_id]
+
+            # Remove device ID from any greenhouse's and zone's devices list
+            resource = {"deviceID": resource_id}
+            for gh in catalog["greenhousesList"]:   
+                if "devices" in gh and resource in gh["devices"]:
+                    gh["devices"].remove(resource)
+            for zn in catalog["zonesList"]:   
+                if "devices" in zn and resource in zn["devices"]:
+                    zn["devices"].remove(resource)
+
+            output = f"Device with ID {resource_id} has been removed"
+
+        elif resource_type == 'services':
+            catalog["servicesList"] = [s for s in catalog["servicesList"] if s["ID"] != resource_id]
+            output = f"Service with ID {resource_id} has been removed"
+
+        elif resource_type == 'greenhouses':
+            greenhouse = next((gh for gh in catalog["greenhousesList"] if gh["greenhouseID"] == resource_id), None)
+            if not greenhouse:
+                raise cherrypy.HTTPError(404, f"Greenhouse with ID {resource_id} not found")
+
+            # Remove greenhouse from greenhousesList
+            catalog["greenhousesList"] = [gh for gh in catalog["greenhousesList"] if gh["greenhouseID"] != resource_id]
+            
+            # Remove greenhouse ID from any user's greenhouses list
+            resource = {"greenhouseID": resource_id}
+            for u in catalog["usersList"]:
+                if "greenhouses" in u and resource in u["greenhouses"]:
+                    u["greenhouses"].remove(resource)
+
+            output = f"Greenhouse with ID {resource_id} has been removed"
+
+        elif resource_type == 'zones':
+            zone = next((z for z in catalog["zonesList"] if z["zoneID"] == resource_id), None)
+            if not zone:
+                raise cherrypy.HTTPError(404, f"Zone with ID {resource_id} not found")
+
+            # Remove zone from ZonesList
+            catalog["zonesList"] = [z for z in catalog["zonesList"] if z["zoneID"] != resource_id]
+
+            # Remove zone ID from any greenhouse's Zones list
+            for gh in catalog["greenhousesList"]:
+                resource = {"zoneID": resource_id}
+                if "zones" in gh and resource in gh["zones"]:
+                    gh["zones"].remove(resource)
+
+            output = f"Zone with ID {resource_id} has been deleted and removed from its greenhouse"
+
+        elif resource_type == 'users':
+            user_exists = any(u["userID"] == resource_id for u in catalog["usersList"])
+            if not user_exists:
+                raise cherrypy.HTTPError(404, f"User with ID {resource_id} not found")
+            catalog["usersList"] = [u for u in catalog["usersList"] if u["userID"] != resource_id]
+            output = f"User with ID {resource_id} has been removed"
+
+        else:
+            raise cherrypy.HTTPError(400, 'Invalid resource type for DELETE')
+
+        # Update the catalog's lastUpdate field
+        catalog["lastUpdate"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+        # Save updated catalog
+        with open(self.catalog_address, "w") as f:
+            json.dump(catalog, f, indent=4)
+
+        print(output)
+        return json.dumps({"message": output})
 
 
 

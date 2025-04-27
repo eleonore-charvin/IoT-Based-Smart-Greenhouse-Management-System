@@ -30,7 +30,8 @@ class IrrigationActuator:
         try:   
             actualTime = time.time()
             self.device_info["lastUpdate"] = actualTime
-            response = requests.post(f"{self.catalog_url}/devices", data=json.dumps(self.device_info))
+            params = {"zoneID": self.zone_id}
+            response = requests.post(f"{self.catalog_url}/devices", params=params, data=json.dumps(self.device_info))
             response.raise_for_status()
         except cherrypy.HTTPError as e: # Catching HTTPError
             print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
@@ -44,7 +45,7 @@ class IrrigationActuator:
         try:
             actualTime = time.time()
             self.device_info["lastUpdate"] = actualTime
-            response = requests.post(f"{self.catalog_url}/devices", data=json.dumps(self.device_info))
+            response = requests.put(f"{self.catalog_url}/devices", data=json.dumps(self.device_info))
             response.raise_for_status()
         except cherrypy.HTTPError as e: # Catching HTTPError
             print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
