@@ -21,12 +21,12 @@ class TemperatureSensorMQTT:
 
         self.deviceID = f"TemperatureSensor{self.greenhouseID}" # example: TemperatureSensor1
 
-        self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=None)
+        self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=self)
 
         self.current_temperature = None  
-        self.previous_temperature = 35.0  # initial temperature
-        self.max_temperature = 45.0 # maximum temperature
-        self.min_temperature = 10.0 # minimum temperature
+        self.max_temperature = 45 # maximum temperature
+        self.min_temperature = 10 # minimum temperature
+        self.previous_temperature = random.randint(self.min_temperature, self.max_temperature) # initial temperature
         self.heating = False
         self.cooling = False
 
@@ -45,16 +45,16 @@ class TemperatureSensorMQTT:
         Register the device in the catalog
         """  
         try:   
-            actualTime = time.time()
+            actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.deviceInfo["lastUpdate"] = actualTime
             self.deviceInfo["deviceID"] = self.deviceID
             params = {"greenhouseID": greenhouseID}
             response = requests.post(f"{self.catalogURL}/devices", params=params, data=json.dumps(self.deviceInfo))
             response.raise_for_status()
-        except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
+        except requests.exceptions.HTTPError as e:
+            print(f"[Greenhouse {self.greenhouseID}] Error raised by catalog while registering device: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
-            print(f"Error registering device in the catalog: {e}")
+            print(f"[Greenhouse {self.greenhouseID}] Error registering device in the catalog: {e}")
 
 
     def updateDevice(self):
@@ -62,14 +62,14 @@ class TemperatureSensorMQTT:
         Update the device registration in the catalog
         """
         try:
-            actualTime = time.time()
+            actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.deviceInfo["lastUpdate"] = actualTime
             response = requests.put(f"{self.catalogURL}/devices", data=json.dumps(self.deviceInfo))
             response.raise_for_status()
-        except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
+        except requests.exceptions.HTTPError as e:
+            print(f"[Greenhouse {self.greenhouseID}] Error raised by catalog while registering device: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
-            print(f"Error registering device in the catalog: {e}")
+            print(f"[Greenhouse {self.greenhouseID}] Error registering device in the catalog: {e}")
     
     def start(self):
         """
@@ -102,11 +102,11 @@ class TemperatureSensorMQTT:
                 self.heating = False
                 self.cooling = False
             else:
-                print(f"[{self.deviceID}] Unknown command: {command}")
+                print(f"[Greenhouse {self.greenhouseID}] Unknown command: {command}")
         except json.JSONDecodeError:
-            print(f"[{self.deviceID}] Error in the format of the MQTT message.")
+            print(f"[Greenhouse {self.greenhouseID}] Error in the format of the MQTT message.")
         except Exception as e:
-            print(f"[{self.deviceID}] Error in the message: {e}")
+            print(f"[Greenhouse {self.greenhouseID}] Error in the message: {e}")
 
     def simulate_temperature(self):
         """
@@ -124,15 +124,15 @@ class TemperatureSensorMQTT:
 
     def publish(self):
         """
-        PUblish the temperature value to the topic MQTT.
+        Publish the temperature value to the topic MQTT.
         """
         temperature = self.simulate_temperature()
         #file di tipo senML
         message = self._message.copy()
         message["v"] = temperature
         message["t"] = time.time()
-        self.mqttClient.myPublish(self.temperatureTopic, json.dumps(message)) # publish the temperature
-        print(f"[{self.deviceID}] Published Temperature: {temperature} °C") # print the complete message
+        self.mqttClient.myPublish(self.temperatureTopic, message) # publish the temperature
+        print(f"[Greenhouse {self.greenhouseID}] Published Temperature {temperature} °C") # print the complete message
 
 if __name__ == '__main__':
     settings = json.load(open("settings.json")) # setting file

@@ -7,7 +7,6 @@
     "deviceInfo": {
         "deviceName": "TemperatureSensor",
         "deviceID":"",
-        "measureType": "Temperature",
-        "lastUpdated": ""
+        "measureType": "Temperature"
     }
 } 
