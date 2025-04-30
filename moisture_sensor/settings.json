@@ -1,12 +1,11 @@
 {
     "catalogURL": "http://catalog",
-    "mqttBroker": "mqtt.eclipseprojects.io",
-    "mqttPort": 1883,
+    "brokerIP": "mqtt.eclipseprojects.io",
+    "brokerPort": 1883,
     "moistureTopic": "group06/SmartGreenhouse/{greenhouseID}/{zoneID}/moisture",
     "irrigationTopic": "group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation",
     "deviceInfo": {
         "deviceName": "MoistureSensor",
-        "measureType": "SoilMoisture",
+        "measureType": "SoilMoisture"
     }
-
 }
