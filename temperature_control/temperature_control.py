@@ -12,7 +12,7 @@ class TemperatureControl:
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"]
         self.serviceInfo = self.settings["serviceInfo"]
-        self.temperatureTopic = self.settings["temperatureTopic"].format(greenhouseID='+')
+        self.temperatureTopic = self.settings["temperatureTopic"]
         self.heatingcoolingTopic = self.settings["heatingcoolingTopic"]
 
         self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=self)
@@ -21,19 +21,20 @@ class TemperatureControl:
         self.temp_max = None
         self.current_temperature = None
 
-        self.mqttClient.start() 
+        self.start() 
+        self.registerService()
 
     def registerService(self):
         """
         Register the service in the catalog
         """
         try:
-            actualTime = time.time()
+            actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.serviceInfo["lastUpdate"] = actualTime
             response = requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
             response.raise_for_status()
-        except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while registering service: {e.status} - {e.args[0]}")
+        except requests.exceptions.HTTPError as e:
+            print(f"Error raised by catalog while registering service: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
             print(f"Error registering service in the catalog: {e}")
         
@@ -42,12 +43,12 @@ class TemperatureControl:
         Update the service registration in the catalog
         """
         try:
-            actualTime = time.time()
+            actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.serviceInfo["lastUpdate"] = actualTime
             response = requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
             response.raise_for_status()
-        except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while updating service: {e.status} - {e.args[0]}")
+        except requests.exceptions.HTTPError as e:
+            print(f"Error raised by catalog while updating service: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
             print(f"Error updating service in the catalog: {e}")
 
@@ -59,7 +60,7 @@ class TemperatureControl:
             params = {"greenhouseID": greenhouseID}
             response = requests.get(f"{self.catalogURL}/zones", params=params)
             if response.status_code == 200:
-                zones = response.json.get("zonesList", [])
+                zones = response.json().get("zonesList", [])
                 min_temp_values = []
                 max_temp_values = []
                 for zone in zones:
@@ -69,11 +70,11 @@ class TemperatureControl:
 
                 temp_min = max(min_temp_values)
                 temp_max = min(max_temp_values)
-                print(f"Temperature range of greenhouse{greenhouseID}: {temp_min} - {temp_max}")
+                print(f"[Greenhouse {greenhouseID}] Temperature range {temp_min} °C - {temp_max} °C")
                 return temp_min, temp_max
-            print("Error fetching the greenhouse data from the catalog.")
+            print(f"[Greenhouse {greenhouseID}] Error fetching the greenhouse data from the catalog.")
         except Exception as e:
-            print(f"Error in the request for the catalog : {e}")
+            print(f"[Greenhouse {greenhouseID}] Error in the request for the catalog : {e}")
 
     def notify(self, topic, payload):
         """
@@ -82,11 +83,10 @@ class TemperatureControl:
         greenhouseID = topic.split("/")[-2] # prendo l'ID della serra
         try:
             data = json.loads(payload)
-            current_temperature = data["e"][0]["v"] # temperatura attuale
-            print(f"[{greenhouseID}] Temperatura ricevuta: {current_temperature}")
+            current_temperature = data["v"] # temperatura attuale
             self.control_temperature(current_temperature,greenhouseID)
         except Exception as e:
-            print(f"[{greenhouseID}] Errore nella gestione del messaggio MQTT: {e}")
+            print(f"[Greenhouse {greenhouseID}] Error processing message: {e}")
 
     def control_temperature(self,current_temperature,greenhouseID):
         """
@@ -97,11 +97,14 @@ class TemperatureControl:
             return
 
         if current_temperature < temp_min:
-            self.publish("heating",greenhouseID)
+            self.publish("heating", greenhouseID)
+            print(f"[Greenhouse {greenhouseID}] Temperature {current_temperature} °C, heating needed!")
         elif current_temperature > temp_max:
-            self.publish("cooling",greenhouseID)
+            self.publish("cooling", greenhouseID)
+            print(f"[Greenhouse {greenhouseID}] Temperature {current_temperature} °C, cooling needed!")
         else:
-            self.publish("off",greenhouseID)
+            self.publish("off", greenhouseID)
+            print(f"[Greenhouse {greenhouseID}] Temperature {current_temperature} °C, acceptable")
 
     def publish(self, command, greenhouseID):
         """
@@ -110,12 +113,11 @@ class TemperatureControl:
         message = {
             "command": command
         }
-        self.mqttClient.myPublish(self.heatingcoolingTopic.format(greenhouseID=greenhouseID), json.dumps(message))
-        print(f"[{greenhouseID}] Pubblicato comando: {command}")
+        self.mqttClient.myPublish(self.heatingcoolingTopic.format(greenhouseID=greenhouseID), message)
 
     def start(self):
-        self.mqttClient.mySubscribe(self.temperatureTopic)
         self.mqttClient.start()
+        self.mqttClient.mySubscribe(self.temperatureTopic)
 
     def stop(self):
         self.mqttClient.stop()
@@ -125,8 +127,6 @@ if __name__ == "__main__":
 
     controller = TemperatureControl(settings)
     print("Starting Temperature Controller...")
-
-    controller.registerService()
     
     try:
         counter = 0
