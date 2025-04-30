@@ -20,7 +20,7 @@ class ActuatorControl:
 
         self.deviceID = f"TemperatureActuator{self.greenhouseID}"  # example: TemperatureActuator1
 
-        self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=None)
+        self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=self)
 
         self.start()
         self.registerDevice() # register the device in the catalog
@@ -30,52 +30,52 @@ class ActuatorControl:
         Register the device in the catalog
         """  
         try:   
-            actualTime = time.time()
+            actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.deviceInfo["lastUpdate"] = actualTime
             self.deviceInfo["deviceID"] = self.deviceID
             params = {"greenhouseID": self.greenhouseID}
             response = requests.post(f"{self.catalogURL}/devices", params=params, data=json.dumps(self.deviceInfo))
             response.raise_for_status()
-        except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
+        except requests.exceptions.HTTPError as e:
+            print(f"[Greenhouse {self.greenhouseID}] Error raised by catalog while registering device: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
-            print(f"Error registering device in the catalog: {e}")
+            print(f"[Greenhouse {self.greenhouseID}] Error registering device in the catalog: {e}")
 
     def updateDevice(self):
         """
         Update the device registration in the catalog
         """
         try:
-            actualTime = time.time()
+            actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.deviceInfo["lastUpdate"] = actualTime
             response = requests.put(f"{self.catalogURL}/devices", data=json.dumps(self.deviceInfo))
             response.raise_for_status()
-        except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while registering device: {e.status} - {e.args[0]}")
+        except requests.exceptions.HTTPError as e:
+            print(f"[Greenhouse {self.greenhouseID}] Error raised by catalog while registering device: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
-            print(f"Error registering device in the catalog: {e}")
+            print(f"[Greenhouse {self.greenhouseID}] Error registering device in the catalog: {e}")
     
     def notify(self, topic, payload):
         """Riceve i comandi dal topic MQTT e stampa lo stato dell'attuatore."""
         try:
             data = json.loads(payload)
-            command = data.get("command", {})
+            command = data.get("command")
 
             if command == "heating":
                 self.status = "heating"
-                print(f"[{self.deviceID}] Heating is ON.")
+                print(f"[Greenhouse {self.greenhouseID}] Heating is ON.")
             elif command == "cooling":
                 self.status = "cooling"
-                print(f"[{self.deviceID}] Cooling is ON.")
+                print(f"[Greenhouse {self.greenhouseID}] Cooling is ON.")
             elif command == "off":
                 self.status = "off"
-                print(f"[{self.deviceID}] Actuators are OFF.")
+                print(f"[Greenhouse {self.greenhouseID}] Actuators are OFF.")
             else:
-                print(f"[{self.deviceID}] Unknown command received: {command}")
+                print(f"[Greenhouse {self.greenhouseID}] Unknown command received: {command}")
         except json.JSONDecodeError:
-            print(f"[{self.deviceID}] Error in the format of the MQTT message.")
+            print(f"[Greenhouse {self.greenhouseID}] Error in the format of the MQTT message.")
         except Exception as e:
-            print(f"[{self.deviceID}] Error in the message: {e}")
+            print(f"[Greenhouse {self.greenhouseID}] Error in the message: {e}")
 
     def start(self):
         """Avvia il client MQTT e si sottoscrive al topic dell'attuatore."""
