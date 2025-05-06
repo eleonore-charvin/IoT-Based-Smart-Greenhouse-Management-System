@@ -6,8 +6,7 @@
     "mqttTopic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/threshold_update",
     "serviceInfo": {
         "serviceID": 4,
-        "serviceName": "TemperatureMonitoring",
-        "lastUpdated": ""
+        "serviceName": "TemperatureMonitoring"
     },
     "moistureIncrement": 5
 }
