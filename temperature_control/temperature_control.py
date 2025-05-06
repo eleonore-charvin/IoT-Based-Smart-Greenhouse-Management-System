@@ -2,7 +2,6 @@ import requests
 import json
 import time
 import uuid
-import cherrypy
 from MyMQTT import *
 
 class TemperatureControl:

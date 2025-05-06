@@ -2,7 +2,6 @@ import json
 import time
 import random
 import requests
-import cherrypy
 import uuid
 from MyMQTT import MyMQTT
 
@@ -122,6 +121,7 @@ if __name__ == '__main__':
     try:
         while True:
             for sensor in sensors:
+                time.sleep(15)
                 sensor.publish()
                 sensor.updateDevice()
             time.sleep(10)

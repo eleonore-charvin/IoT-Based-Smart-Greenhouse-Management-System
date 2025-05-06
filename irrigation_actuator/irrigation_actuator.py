@@ -1,6 +1,5 @@
 import json
 import requests
-import cherrypy
 import time
 import MyMQTT
 import uuid
