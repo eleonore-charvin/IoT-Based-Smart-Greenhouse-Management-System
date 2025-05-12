@@ -1,5 +1,4 @@
 import requests
-import cherrypy
 import json
 import time
 import datetime
@@ -15,6 +14,7 @@ class TemperatureMonitoring:
         Parameters:
             settings (dict): Settings of TemperatureMonitoring.
         """
+
         # Load the settings
         self.settings = settings
         self.catalogURL = self.settings["catalogURL"]
@@ -24,10 +24,14 @@ class TemperatureMonitoring:
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"]
         self.moistureIncrement = self.settings["moistureIncrement"]
+        self.__threshold_update = {
+            "zoneID": 0, 
+            "thresholdDelta": 0
+        }
 
         # Create an MQTT client
         self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=None)
-        self.__message_adjustment = {"greenhouseID": "", "moistureThresholdUpdate": ""}
+        
         # Start it
         self.mqttClient.start()
         
@@ -36,12 +40,12 @@ class TemperatureMonitoring:
         Register the service in the catalog
         """
         try:
-            actualTime = time.time()
+            actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.serviceInfo["lastUpdate"] = actualTime
             response = requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
             response.raise_for_status()
-        except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while registering service: {e.status} - {e.args[0]}")
+        except requests.exceptions.HTTPError as e:
+            print(f"Error raised by catalog while registering service: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
             print(f"Error registering service in the catalog: {e}")
         
@@ -50,12 +54,12 @@ class TemperatureMonitoring:
         Update the service registration in the catalog
         """
         try:
-            actualTime = time.time()
+            actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.serviceInfo["lastUpdate"] = actualTime
             response = requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
             response.raise_for_status()
-        except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while updating service: {e.status} - {e.args[0]}")
+        except requests.exceptions.HTTPError as e:
+            print(f"Error raised by catalog while updating service: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
             print(f"Error updating service in the catalog: {e}")
 
@@ -77,6 +81,7 @@ class TemperatureMonitoring:
         Returns:
             dict: dictionnary of (date of the day, average temperature on this day) pairs.
         """
+
         # Check if the greenhouse has a channel
         if "thingspeakChannel" not in greenhouse.keys():
             print(f"Cannot retrieve channel for Greenhouse {greenhouse.get("greenhouseID", "Unknown")}")
@@ -139,6 +144,7 @@ class TemperatureMonitoring:
         Returns:
             int: amount to add or substract from the moisture threshold.
         """
+
         # Sort the dates chronologically
         sorted_dates = sorted(daily_avg_temperature.keys())
         number_dates = len(sorted_dates)
@@ -169,10 +175,11 @@ class TemperatureMonitoring:
         else:
             return 0
 
-    def publish(self):
+    def update_moisture_threshold(self):
         """
-        Publish the update of the moisture threshold for each greenhouse in the catalog.
+        Update of the moisture threshold for each zone of each greenhouse in the catalog.
         """
+        
         # Compute the date range (last 5 days)
         end_date = datetime.datetime.now() # Current time
         start_date = end_date - datetime.timedelta(days=5) # 5 days ago
@@ -180,16 +187,18 @@ class TemperatureMonitoring:
         # Format dates for ThingSpeak API (ISO 8601 format)
         start_date_str = start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         end_date_str = end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        print(f"Updating the moisture thresholds based on data from {start_date_str} to {end_date_str}")
 
         # Get the list of greenhouses from the catalog
         try:
             response = requests.get(f"{self.catalogURL}/greenhouses")
+            response.raise_for_status()
             greenhouses = response.json().get("greenhousesList", [])
         except json.JSONDecodeError:
             print("Error decoding JSON response for greenhouses list")
             return
-        except cherrypy.HTTPError as e: # Catching HTTPError
-            print(f"Error raised by catalog while fetching greenhouses list: {e.status} - {e.args[0]}")
+        except requests.exceptions.HTTPError as e:
+            print(f"Error raised by catalog while fetching greenhouses list: {e.response.status_code} - {e.args[0]}")
             return
         except Exception as e:
             print(f"Error fetching greenhouses list from the catalog: {e}")
@@ -202,20 +211,24 @@ class TemperatureMonitoring:
             
             # Compute the adjustement of the moisture threshold
             moisture_adjustment = self.compute_moisture_adjustment(daily_avg_temperature)
+            greenhouseID = greenhouse["greenhouseID"]
+            print(f"[Greenhouse {greenhouseID}] moisture adjustment: {moisture_adjustment}")
 
-            # If we have to adjust the moisture threshold, publish the adjustment
+            # If we have to adjust the moisture threshold, update it on the catalog for each zone in the greenhouse
             if moisture_adjustment != 0:
-                greenhouseID = greenhouse["greenhouseID"]
-                message_adjustment = self.__message_adjustment.copy()
-                message_adjustment["greenhouseID"] = greenhouseID
-                message_adjustment["moistureThresholdUpdate"] = moisture_adjustment
-
-                # Publish the message for each zone in the greenhouse
                 for zone in greenhouse["zones"]:
                     zoneID = zone["zoneID"]
-                    topic = self.updateTopic.format(greenhouseID=greenhouseID, zoneID=zoneID)
-                    self.mqttClient.myPublish(topic, message_adjustment)
-                    print(f"Published moisture threshold adjustment for greenhouse {greenhouseID} zone {zoneID}: {moisture_adjustment}")
+                    print(f"[Greenhouse {greenhouseID} zone {zoneID}] updating moisture threshold")
+                    threshold_update = self.__threshold_update.copy()
+                    threshold_update["zoneID"] = zoneID
+                    threshold_update["thresholdDelta"] = moisture_adjustment
+                    try:
+                        response = requests.put(f"{self.catalogURL}/threshold", data=json.dumps(threshold_update))
+                        response.raise_for_status()
+                    except requests.exceptions.HTTPError as e:
+                        print(f"Error raised by catalog while updating moisture threshold of zone {zoneID}: {e.response.status_code} - {e.args[0]}")
+                    except Exception as e:
+                        print(f"Error while updating moisture threshold of zone {zoneID} in the catalog: {e}")
 
 if __name__ == "__main__":
     # Create an instance of TemperatureMonitoring
@@ -226,8 +239,8 @@ if __name__ == "__main__":
     # Register it in the catalog
     temperature_monitoring.registerService()
 
-    # Track the last published date and the number of days (to wait for 5 days before starting the update)
-    last_published_date = None
+    # Track the last updated date and the number of days (to wait for 5 days before starting the update)
+    last_updated_date = None
     number_days = 0
 
     try:
@@ -239,17 +252,17 @@ if __name__ == "__main__":
             # Get the current day
             current_date = datetime.datetime.now().date()
 
-            # Once per day, compute and publish the update of the moisture threshold
-            if last_published_date != current_date:
-                # If less than 5 days passed, wait for another day
+            # Once per day, compute the update of the moisture threshold
+            if last_updated_date != current_date:
+                # If less than 5 days have passed, wait for another day
                 if number_days < 5:
                     number_days += 1
                 
-                # Else, compute and publish the update of the moisture threshold
+                # Else, compute the update of the moisture threshold
                 else:
-                    temperature_monitoring.publish()
-                    # Update last published date
-                    last_published_date = current_date 
+                    temperature_monitoring.update_moisture_threshold()
+                    # Update last updated date
+                    last_updated_date = current_date 
 
     except KeyboardInterrupt:
         # Graceful shutdown

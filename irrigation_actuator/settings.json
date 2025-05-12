@@ -1,11 +1,10 @@
 {
     "catalogURL": "http://catalog",
-    "broker": "mqtt.eclipseprojects.io",
-    "port": 1883,
+    "brokerIP": "mqtt.eclipseprojects.io",
+    "brokerPort": 1883,
     "irrigationTopic": "group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation",
     "deviceInfo": {
-        "deviceName": "MoistureActuator",
-        "lastUpdated": ""
+        "deviceName": "MoistureActuator"
     }
 }
 

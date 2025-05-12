@@ -1,13 +1,12 @@
 {
-    "broker":"mqtt.eclipseprojects.iog",
-    "port":1883,
+    "brokerIP":"mqtt.eclipseprojects.io",
+    "brokerPort":1883,
     "catalogURL":"http://catalog",
-    "moistureTopic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/moisture",
+    "moistureTopic":"group06/SmartGreenhouse/+/+/moisture",
     "irrigationTopic":"group06/SmartGreenhouse/{greenhouseID}/{zoneID}/irrigation",
     "serviceInfo": {
         "serviceID": 6,
-        "serviceName": "MoistureControl",
-        "lastUpdated": ""
+        "serviceName": "MoistureControl"
     }
 
 }

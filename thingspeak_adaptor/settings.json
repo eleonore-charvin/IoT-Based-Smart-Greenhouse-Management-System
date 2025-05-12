@@ -7,7 +7,6 @@
     "mqttTopic":"group06/SmartGreenhouse/",
     "serviceInfo": {
         "serviceID": 3,
-        "serviceName": "ThingspeakAdaptor",
-        "lastUpdated": ""
+        "serviceName": "ThingspeakAdaptor"
     }
 }

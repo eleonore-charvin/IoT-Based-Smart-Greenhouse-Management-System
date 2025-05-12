@@ -6,7 +6,6 @@
     "deviceInfo": {
         "deviceName": "CoolingHeatingActuator",
         "deviceID":"",
-        "status": "off",
-        "lastUpdated": ""
+        "status": "off"
     }
 }
