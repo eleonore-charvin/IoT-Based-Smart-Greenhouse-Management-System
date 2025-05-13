@@ -1,5 +1,6 @@
 {
-    "API_BASE": "http://localhost:8080",
+    "API_BASE": "http://127.0.0.1:8080"
+,
     "MQTT_BROKER": "test.mosquitto.org",
     "MQTT_PORT": 1883,
     "MQTT_CLIENT_ID": "telegramBotClient",
