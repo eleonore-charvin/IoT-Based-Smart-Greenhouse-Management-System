@@ -1,9 +1,11 @@
 {
-    "API_BASE": "http://127.0.0.1:8080"
-,
-    "MQTT_BROKER": "test.mosquitto.org",
-    "MQTT_PORT": 1883,
-    "MQTT_CLIENT_ID": "telegramBotClient",
-    "TOPIC_PUBLISH": "SmartGreenHouse/{zone_id}/set_moisture"
-  }
-  
+    "catalogURL": "http://catalog",
+    "tojen": "8093558201:AAH7ET2nUT8uSkwlcn6zs6ykBvqcLjORauo",
+    "brokerIP": "mqtt.eclipseprojects.io",
+    "brokerPort": 1883,
+    "serviceInfo": {
+        "serviceID": 7,
+        "serviceName": "TelegramBot"
+    }
+}
+
