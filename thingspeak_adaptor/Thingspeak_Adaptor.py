@@ -47,7 +47,8 @@ class Thingspeak_Adaptor:
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.serviceInfo["lastUpdate"] = actualTime
-            requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+            response = requests.post(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+            response.raise_for_status()
         except requests.exceptions.HTTPError as e:
             print(f"Error raised by catalog while registering service: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
@@ -60,7 +61,8 @@ class Thingspeak_Adaptor:
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             self.serviceInfo["lastUpdate"] = actualTime
-            requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+            response = requests.put(f"{self.catalogURL}/services", data=json.dumps(self.serviceInfo))
+            response.raise_for_status()
         except requests.exceptions.HTTPError as e:
             print(f"Error raised by catalog while updating service: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
