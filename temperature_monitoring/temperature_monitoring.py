@@ -164,11 +164,11 @@ class TemperatureMonitoring:
                 variations += -1
 
         # If the temperature has increased every day, increment the moisture threshold
-        if variations == number_dates - 1:
+        if (variations > 0) and (variations == number_dates - 1):
             return self.moistureIncrement
         
         # If the temperature has decreased every day, decrement the moisture threshold
-        elif variations == -(number_dates - 1):
+        elif (variations < 0) and (variations == -(number_dates - 1)):
             return - self.moistureIncrement
         
         # Else, don't change the moisture threshold
