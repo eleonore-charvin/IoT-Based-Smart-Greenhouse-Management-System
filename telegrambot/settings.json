@@ -1,6 +1,6 @@
 {
     "catalogURL": "http://catalog",
-    "tojen": "8093558201:AAH7ET2nUT8uSkwlcn6zs6ykBvqcLjORauo",
+    "telegramToken": "8093558201:AAH7ET2nUT8uSkwlcn6zs6ykBvqcLjORauo",
     "brokerIP": "mqtt.eclipseprojects.io",
     "brokerPort": 1883,
     "serviceInfo": {
