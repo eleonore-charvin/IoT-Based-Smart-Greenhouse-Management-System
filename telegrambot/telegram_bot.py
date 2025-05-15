@@ -381,12 +381,16 @@ class TelegramBot:
             print("Missing information for 'create_zone'")
             return
         
-        gh_id = int(args[0])
-        name = args[1]
-        plant_type = args[2]
-        min_temp = float(args[3])
-        max_temp = float(args[4])
-        moisture_threshold = float(args[5])
+        try:
+            gh_id = int(args[0])
+            name = args[1]
+            plant_type = args[2]
+            min_temp = float(args[3])
+            max_temp = float(args[4])
+            moisture_threshold = float(args[5])
+        except ValueError:
+            self.bot.sendMessage(chat_id, f"Please provide an integer for greenhouse ID and float numbers for min/max temperature and moisture threshold.")
+            print((f"Invalid greenhouse ID, min/max temperature or moisture threshold: {args[0]}, {args[3]}, {args[4]}, {args[5]}"))
 
         # Get the zones from the catalog
         try:
@@ -439,7 +443,11 @@ class TelegramBot:
 
         # Get the zone ID from the arguments
         if len(args) != 0:
-            zone_id = int(args[0])
+            try:
+                zone_id = int(args[0])
+            except ValueError:
+                self.bot.sendMessage(chat_id, f"Please provide an integer for zone ID.")
+                print((f"Invalid zone ID: {args[0]}"))
         else:
             self.bot.sendMessage(chat_id, "Please provide the ID of the zone to delete. Command usage: /delete_zone <zone_id>")
             print("No ID provided for 'delete_zone'")
@@ -469,10 +477,14 @@ class TelegramBot:
         """
 
         # Get zoneID and value to add from the arguments
-        try:
-            zone_id = int(args[0])
-            delta = float(args[1])
-        except:
+        if len(args) >= 2:
+            try:
+                zone_id = int(args[0])
+                delta = float(args[1])
+            except ValueError:
+                self.bot.sendMessage(chat_id, f"Please provide an integer for zone ID and a float number for value to add.")
+                print((f"Invalid zone ID, or value to add: {args[0]}, {args[1]}"))
+        else:
             self.bot.sendMessage(chat_id, "Please provide a zone ID and a value to add. Command usage: /update_moisture <zone_id> <+/-value>")
             print("No zone ID or delta value provided for 'update_moisture'")
             return
@@ -546,7 +558,11 @@ class TelegramBot:
 
         # Get the greenhouse ID from the arguments
         if len(args) != 0:
-            greenhouse_id = int(args[0])
+            try:
+                greenhouse_id = int(args[0])
+            except ValueError:
+                self.bot.sendMessage(chat_id, f"Please provide an integer for greenhouse ID.")
+                print((f"Invalid greenhouse ID: {args[0]}"))
         else:
             self.bot.sendMessage(chat_id, "Please provide the ID of the greenhouse. Command usage: /get_zones <gh_id>")
             print("No ID provided for 'get_zones'")
@@ -589,7 +605,11 @@ class TelegramBot:
 
         # Get the zone ID from the arguments
         if len(args) != 0:
-            zone_id = int(args[0])
+            try:
+                zone_id = int(args[0])
+            except ValueError:
+                self.bot.sendMessage(chat_id, f"Please provide an integer for zone ID.")
+                print((f"Invalid zone ID: {args[0]}"))    
         else:
             self.bot.sendMessage(chat_id, "Please provide the ID of the zone. Command usage: /get_zone_info <zone_id>")
             print("No ID provided for 'get_zone_info'")
