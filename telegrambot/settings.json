@@ -4,7 +4,7 @@
     "brokerIP": "mqtt.eclipseprojects.io",
     "brokerPort": 1883,
     "serviceInfo": {
-        "serviceID": 7,
+        "serviceID": 6,
         "serviceName": "TelegramBot"
     }
 }
