@@ -1,0 +1,82 @@
+version: '3.5'
+
+services:
+  catalog:
+    build: ./catalog
+    container_name: catalog
+    expose:
+      - "80"
+    ports:
+      - "8080:80"
+
+  telegrambot:
+    build: ./telegrambot
+    container_name: telegrambot
+    depends_on:
+      - catalog
+    links:
+      - catalog
+
+  thingspeak_adaptor:
+    build: ./thingspeak_adaptor
+    container_name: thingspeak_adaptor
+    depends_on:
+      - catalog
+    links:
+      - catalog
+  
+  cooling_heating_system_actuator:
+    build: ./cooling_heating_system_actuator
+    container_name: cooling_heating_system_actuator
+    depends_on:
+      - catalog
+    links:
+      - catalog
+    
+  irrigation_actuator:
+    build: ./irrigation_actuator
+    container_name: irrigation_actuator
+    depends_on:
+      - catalog
+    links:
+      - catalog
+
+  irrigation_control:
+    build: ./irrigation_control
+    container_name: irrigation_control
+    depends_on:
+      - catalog
+    links:
+      - catalog
+  
+  moisture_sensor:
+    build: ./moisture_sensor
+    container_name: moisture_sensor
+    depends_on:
+      - catalog
+    links:
+      - catalog
+
+  temperature_control:
+    build: ./temperature_control
+    container_name: temperature_control
+    depends_on:
+      - catalog
+    links:
+      - catalog
+
+  temperature_monitoring:
+    build: ./temperature_monitoring
+    container_name: temperature_monitoring
+    depends_on:
+      - catalog
+    links:
+      - catalog
+
+  temperature_sensor:
+    build: ./temperature_sensor
+    container_name: temperature_sensor
+    depends_on:
+      - catalog
+    links:
+      - catalog
