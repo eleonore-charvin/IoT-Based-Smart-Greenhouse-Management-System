@@ -630,14 +630,14 @@ class TelegramBot:
 
                 # Format the response
                 zone = zones[0]
-                msg = "*Zone Information:*\n"
+                msg = "Zone Information:\n"
                 msg += f"ID: {zone['zoneID']}\n"
                 msg += f"Name: {zone['zoneName']}\n"
                 msg += f"Plant Type: {zone["plantType"]}\n"
                 msg += f"Temperature Range: {zone["temperatureRange"]["min"]} °C - {zone["temperatureRange"]["max"]} °C\n"
                 msg += f"Moisture Threshold: {zone["moistureThreshold"]} %\n"
 
-                self.bot.sendMessage(chat_id, msg, parse_mode="Markdown")
+                self.bot.sendMessage(chat_id, msg)
                 print(f"Successfully fetched information of zone {zone_id}")
         
         except requests.exceptions.HTTPError as e:
