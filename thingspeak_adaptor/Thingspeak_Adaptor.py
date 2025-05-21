@@ -95,6 +95,7 @@ class Thingspeak_Adaptor:
             return
         except ValueError:
             print((f"Invalid greenhouseID or zoneID: {topic.split("/")[2]}, {topic.split("/")[3]}"))
+            return
 
         # Get the write API key of the channel corresponding to the greenhouse
         channel_write_api_key, channelID, numberZoneFields = self.getGreenhouseWriteAPIKey(greenhouseID)
@@ -110,10 +111,13 @@ class Thingspeak_Adaptor:
 
         except json.JSONDecodeError:
             print(f"Error decoding JSON response for greenhouse {greenhouseID}")
+            return
         except requests.exceptions.HTTPError as e:
             print(f"Error raised by catalog while fetching zones id of greenhouse {greenhouseID}: {e.response.status_code} - {e.args[0]}")
+            return
         except Exception as e:
             print(f"Error fetching zones id of greenhouse {greenhouseID} from the catalog: {e}")
+            return
         
         # If it is possible to create new fields for the zones, add them
         if ((len(zones) > numberZoneFields) and (numberZoneFields < self.maxZoneFields)):
