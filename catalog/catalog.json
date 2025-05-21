@@ -3,7 +3,108 @@
     "projectName": "SmartGreenhouse",
     "servicesList": [],
     "devicesList": [],
-    "usersList": [],
-    "zonesList": [],
-    "greenhousesList": []
+    "usersList": [
+        {
+            "userID": 7201915868,
+            "userName": "Eleonore",
+            "chatID": 7201915868,
+            "greenhouses": [
+                {
+                    "greenhouseID": 1
+                }
+            ],
+            "lastUpdate": "2025-05-21 16:20:14"
+        },
+        {
+            "userID": 2,
+            "userName": "Lorenzo",
+            "greenhouses": [
+                {
+                    "greenhouseID": 2
+                }
+            ],
+            "lastUpdate": "2025-05-21 16:20:14"
+        }
+    ],
+    "zonesList": [
+        {
+            "zoneID": 1,
+            "zoneName": "Test_zone",
+            "plantType": "Tomato",
+            "temperatureRange": {
+                "min": 20.0,
+                "max": 30.0
+            },
+            "moistureThreshold": 50.0,
+            "devices": [],
+            "lastUpdate": "2025-05-21 21:44:28",
+            "thingspeakFieldID": 4
+        },
+        {
+            "zoneID": 3,
+            "zoneName": "Test_zone3",
+            "plantType": "Potato",
+            "temperatureRange": {
+                "min": 15.0,
+                "max": 25.0
+            },
+            "moistureThreshold": 20.0,
+            "devices": [],
+            "thingspeakFieldID": 4,
+            "lastUpdate": "2025-05-21 22:14:49"
+        },
+        {
+            "zoneID": 4,
+            "zoneName": "Test_zone4",
+            "plantType": "Potato",
+            "temperatureRange": {
+                "min": 15.0,
+                "max": 25.0
+            },
+            "moistureThreshold": 20.0,
+            "devices": [],
+            "thingspeakFieldID": 5,
+            "lastUpdate": "2025-05-21 22:14:49"
+        }
+    ],
+    "greenhousesList": [
+        {
+            "greenhouseID": 1,
+            "greenhouseName": "Test",
+            "zones": [
+                {
+                    "zoneID": 1
+                }
+            ],
+            "devices": [],
+            "lastUpdate": "2025-05-21 21:03:04",
+            "thingspeakChannel": {
+                "channelID": 2969979,
+                "channelWriteAPIkey": "7ND2FDZD8GGUR2GB",
+                "channelReadAPIkey": "EY18J5SE2KEB2DAP",
+                "numberZoneFields": 2
+            }
+        },
+        {
+            "greenhouseID": 2,
+            "greenhouseName": "Test2",
+            "zones": [
+                {
+                    "zoneID": 3
+                },
+                {
+                    "zoneID": 4
+                }
+            ],
+            "devices": [],
+            "thingspeakChannel": {
+                "channelID": 2970003,
+                "channelWriteAPIkey": "KC4VKWCRINIIEMHC",
+                "channelReadAPIkey": "Z89ZW1IM4RD7WYJP",
+                "numberZoneFields": 2
+            },
+            "lastUpdate": "2025-05-21 22:14:49"
+        }
+    ],
+    "lastUpdate": "2025-05-21 22:56:57"
 }
