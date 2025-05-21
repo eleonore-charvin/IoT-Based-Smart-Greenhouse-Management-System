@@ -923,8 +923,6 @@ class CatalogREST(object):
         print(output)
         return json.dumps({"message": output})
 
-
-
 if __name__ == '__main__':
     catalogClient = CatalogREST("catalog.json")
     conf = {
@@ -933,11 +931,12 @@ if __name__ == '__main__':
             'tools.sessions.on': True
         }
     }
-    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 8080})
+    cherrypy.config.update({'server.socket_host': '0.0.0.0', 'server.socket_port': 80})
     cherrypy.tree.mount(catalogClient, '/', conf)
     cherrypy.engine.start()
     cherrypy.engine.block()
     cherrypy.engine.exit()
+    print("Catalog running...")
 
     # Keep script running
     while True:
