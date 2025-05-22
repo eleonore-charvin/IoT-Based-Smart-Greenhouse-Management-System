@@ -122,6 +122,7 @@ class TemperatureMonitoring:
                         temp_value = float(temp_value)
                     except ValueError:
                         print(f"Invalid temperature value: {temp_value}")
+                        break
                     
                     if timestamp not in daily_temperatures:
                         daily_temperatures[timestamp] = []

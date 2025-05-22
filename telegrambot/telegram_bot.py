@@ -448,6 +448,7 @@ class TelegramBot:
             except ValueError:
                 self.bot.sendMessage(chat_id, f"Please provide an integer for zone ID.")
                 print((f"Invalid zone ID: {args[0]}"))
+                return
         else:
             self.bot.sendMessage(chat_id, "Please provide the ID of the zone to delete. Command usage: /delete_zone <zone_id>")
             print("No ID provided for 'delete_zone'")
@@ -484,6 +485,7 @@ class TelegramBot:
             except ValueError:
                 self.bot.sendMessage(chat_id, f"Please provide an integer for zone ID and a float number for value to add.")
                 print((f"Invalid zone ID, or value to add: {args[0]}, {args[1]}"))
+                return
         else:
             self.bot.sendMessage(chat_id, "Please provide a zone ID and a value to add. Command usage: /update_moisture <zone_id> <+/-value>")
             print("No zone ID or delta value provided for 'update_moisture'")
@@ -563,6 +565,7 @@ class TelegramBot:
             except ValueError:
                 self.bot.sendMessage(chat_id, f"Please provide an integer for greenhouse ID.")
                 print((f"Invalid greenhouse ID: {args[0]}"))
+                return
         else:
             self.bot.sendMessage(chat_id, "Please provide the ID of the greenhouse. Command usage: /get_zones <gh_id>")
             print("No ID provided for 'get_zones'")

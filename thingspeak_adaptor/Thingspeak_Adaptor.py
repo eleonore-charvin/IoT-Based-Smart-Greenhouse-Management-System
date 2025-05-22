@@ -160,10 +160,13 @@ class Thingspeak_Adaptor:
                 print(f"Uploading zone {zoneID} on field {field_number}")
             except json.JSONDecodeError:
                     print(f"Error decoding JSON response for zone {zoneID}")
+                    return
             except requests.exceptions.HTTPError as e:
                 print(f"Error raised by catalog while fetching zone {zoneID}: {e.response.status_code} - {e.args[0]}")
+                return
             except Exception as e:
                 print(f"Error fetching fetching zone {zoneID} from the catalog: {e}")
+                return
 
             if field_number == -1:
                 print(f"No field for zone {zoneID}")
@@ -328,10 +331,13 @@ class Thingspeak_Adaptor:
             zones = response.json().get("zonesList", [])
         except json.JSONDecodeError:
             print(f"Error decoding JSON response for zone {zoneID}")
+            return
         except requests.exceptions.HTTPError as e:
             print(f"Error raised by catalog while fetching zone {zoneID}: {e.response.status_code} - {e.args[0]}")
+            return
         except Exception as e:
             print(f"Error while fetching zone {zoneID} from the catalog: {e}")
+            return
         
         if zones:
             zone = zones[0]
@@ -366,9 +372,11 @@ class Thingspeak_Adaptor:
             zones = response.json().get("zonesList", [])
         except requests.exceptions.HTTPError as e:
             print(f"Error raised by catalog while fetching zones of greenhouse {greenhouseID}: {e.response.status_code} - {e.args[0]}")
+            return
         
         except Exception as e:
             print(f"Error while fetching zones of greenhouse {greenhouseID} in the catalog: {e}")
+            return
 
         # Get the mapping of the existing zones of the greenhouse and store the new zones
         fieldToZone = {}
@@ -447,10 +455,13 @@ class Thingspeak_Adaptor:
             old_number = greenhouse["thingspeakChannel"]["numberZoneFields"]
         except json.JSONDecodeError:
             print(f"Error decoding JSON response for greenhouse {greenhouseID}")
+            return
         except requests.exceptions.HTTPError as e:
             print(f"Error raised by catalog while fetching greenhouse {greenhouseID}: {e.response.status_code} - {e.args[0]}")
+            return
         except Exception as e:
             print(f"Error fetching fetching greenhouse {greenhouseID} from the catalog: {e}")
+            return
         
         # Update the greenhouse in the catalog with the new number of zones fields
         try:
