@@ -4,8 +4,17 @@ import uuid
 import time
 from MyMQTT import *
 
-class ActuatorControl:
+class CoolingHeatingActuator:
+
     def __init__(self, settings, greenhouseID):
+        """
+        Initialize CoolingHeatingActuator.
+        
+        Parameters:
+            settings (dict): Settings of CoolingHeatingActuator.
+            greenhouseID (int): ID of the greenhouse in which the actuator is.
+        """
+
         self.settings = settings
         self.broker = self.settings["brokerIP"]
         self.port = self.settings["brokerPort"] 
@@ -26,7 +35,7 @@ class ActuatorControl:
 
     def registerDevice(self):
         """
-        Register the device in the catalog
+        Register the device in the catalog.
         """  
         try:   
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -42,7 +51,7 @@ class ActuatorControl:
 
     def updateDevice(self):
         """
-        Update the device registration in the catalog
+        Update the device registration in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -55,7 +64,14 @@ class ActuatorControl:
             print(f"[Greenhouse {self.greenhouseID}] Error registering device in the catalog: {e}")
     
     def notify(self, topic, payload):
-        """Riceve i comandi dal topic MQTT e stampa lo stato dell'attuatore."""
+        """
+        Method called when a message is received.
+        Retreive the command and set the status (heating/cooling/off) accordingly.
+        
+        Parameters:
+            topic (str): topic of the message.
+            payload (json): payload of the message.
+        """
         try:
             data = json.loads(payload)
             command = data.get("command")
@@ -77,12 +93,16 @@ class ActuatorControl:
             print(f"[Greenhouse {self.greenhouseID}] Error in the message: {e}")
 
     def start(self):
-        """Avvia il client MQTT e si sottoscrive al topic dell'attuatore."""
+        """
+        Start the MQTT client and subscribe to the topic.
+        """
         self.mqttClient.start()
         self.mqttClient.mySubscribe(self.heatingcoolingTopic)
         
     def stop(self):
-        """Ferma il client MQTT."""
+        """
+        Stop the MQTT client.
+        """
         self.mqttClient.stop()
 
 if __name__ == "__main__":
@@ -98,7 +118,7 @@ if __name__ == "__main__":
     actuators = [] 
     for greenhouse in greenhouses:
         greenhouseID = greenhouse["greenhouseID"]
-        actuator = ActuatorControl(settings, greenhouseID)
+        actuator = CoolingHeatingActuator(settings, greenhouseID)
         actuators.append(actuator)
 
     print("Actuator control systems started...") 

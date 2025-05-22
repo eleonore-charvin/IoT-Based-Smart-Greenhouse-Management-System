@@ -6,7 +6,17 @@ import uuid
 from MyMQTT import MyMQTT
 
 class MoistureSensor:
+
     def __init__(self, settings, greenhouse_id, zone_id):
+        """
+        Initialize MoistureSensor.
+        
+        Parameters:
+            settings (dict): Settings of MoistureSensor.
+            greenhouse_id (int): ID of the greenhouse in which the sensor is.
+            zone°id (int): ID of the zone in which the sensor is.
+        """
+
         self.settings = settings
         self.catalog_url = settings['catalogURL']
         self.device_info = settings['deviceInfo'].copy()
@@ -39,7 +49,7 @@ class MoistureSensor:
     
     def registerDevice(self):
         """
-        Register the device in the catalog
+        Register the device in the catalog.
         """  
         try:   
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -54,7 +64,7 @@ class MoistureSensor:
 
     def updateDevice(self):
         """
-        Update the device registration in the catalog
+        Update the device registration in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -67,14 +77,24 @@ class MoistureSensor:
             print(f"[Greenhouse {self.greenhouse_id} zone {self.zone_id}] Error registering device in the catalog: {e}")
 
     def notify(self, topic, payload):
+        """
+        Method called when a message is received.
+        Retreive the command and set the irrigation status accordingly.
+        
+        Parameters:
+            topic (str): topic of the message.
+            payload (json): payload of the message.
+        """
         try:
             message = json.loads(payload)
             self.irrigation_on = (message.get("command") == "ON")
         except Exception as e:
             print(f"[Greenhouse {self.greenhouse_id} zone {self.zone_id}] Error in message processing: {e}")
             
-    #update the moisture level with respect to the irrigation status
     def update_moisture(self):
+        """
+        Update the moisture level of the zone with respect to the irrigation status.
+        """
         if self.irrigation_on:
             self.moisture_level = min(100, self.moisture_level + 10)
         else:
@@ -82,13 +102,22 @@ class MoistureSensor:
         return round(self.moisture_level, 2)
 
     def startSim(self):
+        """
+        Start the MQTT client and subscribe to the topic.
+        """
         self.client.start()
         self.client.mySubscribe(self.irrigation_topic)
 
     def stopSim(self):
+        """
+        Stop the MQTT client.
+        """
         self.client.stop()
 
     def publish(self):
+        """
+        Update the moisture level of the zone and publish it. 
+        """
         moisture = self.update_moisture()
         message = self._message.copy()
         message["v"] = moisture

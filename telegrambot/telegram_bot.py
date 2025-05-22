@@ -1,12 +1,10 @@
 
 import json            
-import time          
-import uuid
+import time
 import requests    
 import telepot         
 from telepot.loop import MessageLoop  
-from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton  
-from MyMQTT import MyMQTT
+from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
 class TelegramBot:
 
@@ -22,8 +20,6 @@ class TelegramBot:
         self.settings = settings
         self.catalogURL = settings["catalogURL"]
         self.serviceInfo = settings['serviceInfo']
-        self.broker = self.settings["brokerIP"]
-        self.port = self.settings["brokerPort"]
         self.token = self.settings["telegramToken"]
 
         # Data structures
@@ -59,21 +55,10 @@ class TelegramBot:
         self.bot = telepot.Bot(self.token)
         # Start the bot with a message loop
         MessageLoop(self.bot, {'chat': self.on_chat_message, 'callback_query': self.on_callback_query}).run_as_thread()
-        
-        # Create an MQTT client
-        self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=None) # uuid is to generate a random string for the client id
-        # Start it
-        self.mqttClient.start()
-    
-    def stop(self):
-        """
-        Stop the MQTT client
-        """
-        self.mqttClient.stop()
     
     def registerService(self):
         """
-        Register the service in the catalog
+        Register the service in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -87,7 +72,7 @@ class TelegramBot:
         
     def updateService(self):
         """
-        Update the service registration in the catalog
+        Update the service registration in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -693,5 +678,4 @@ if __name__ == '__main__':
     
     except KeyboardInterrupt:
         # Graceful shutdown
-        telegram_bot.stop()
         print("Telegram Bot stopped")

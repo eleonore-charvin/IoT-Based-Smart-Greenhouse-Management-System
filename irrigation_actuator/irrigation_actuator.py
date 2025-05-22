@@ -5,7 +5,17 @@ import MyMQTT
 import uuid
 
 class IrrigationActuator:
+    
     def __init__(self, settings, greenhouseID, zoneID):
+        """
+        Initialize IrrigationActuator.
+        
+        Parameters:
+            settings (dict): Settings of IrrigationActuator.
+            greenhouseID (int): ID of the greenhouse in which the actuator is.
+            zoneID (int): ID of the zone in which the actuator is.
+        """
+
         self.settings = settings
         self.clientID = str(uuid.uuid4())
         self.broker = settings["brokerIP"]
@@ -24,7 +34,7 @@ class IrrigationActuator:
 
     def registerDevice(self):
         """
-        Register the device in the catalog
+        Register the device in the catalog.
         """  
         try:   
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -39,7 +49,7 @@ class IrrigationActuator:
 
     def updateDevice(self):
         """
-        Update the device registration in the catalog
+        Update the device registration in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -52,6 +62,14 @@ class IrrigationActuator:
             print(f"[Greenhouse {self.greenhouse_id} zone {self.zone_id}] Error registering device in the catalog: {e}")
     
     def notify(self, topic, payload):
+        """
+        Method called when a message is received.
+        Retreive the command and set the irrigation status accordingly.
+        
+        Parameters:
+            topic (str): topic of the message.
+            payload (json): payload of the message.
+        """
         try:
             message = json.loads(payload)
             zone_id = topic.split("/")[-2]
@@ -70,10 +88,16 @@ class IrrigationActuator:
             print(f"[Greenhouse {greenhouse_id} zone {zone_id}] Error processing message: {e}")
 
     def start(self):
+        """
+        Start the MQTT client and subscribe to the topic.
+        """
         self.client.start()
         self.client.mySubscribe(self.irrigation_topic)
 
     def stop(self):
+        """
+        Stop the MQTT client.
+        """
         self.client.stop()
 
 if __name__ == "__main__":

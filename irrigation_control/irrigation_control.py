@@ -5,7 +5,15 @@ import time
 import uuid
 
 class IrrigationControl:
+
     def __init__(self, settings):
+        """
+        Initialize IrrigationControl.
+        
+        Parameters:
+            settings (dict): Settings of IrrigationControl.
+        """
+
         self.client_id = str(uuid.uuid1())
         self.settings = settings
         self.broker = settings["brokerIP"]
@@ -19,6 +27,16 @@ class IrrigationControl:
         self.registerService()
 
     def get_zone_threshold(self, greenhouseID, zoneID):
+        """
+        Get the moisture threshold of the zone from the catalog.
+
+        Params:
+            greenhouseID (int): ID of the greenhouse in which the zone is.
+            zoneID (int): ID of the zone whose moisture threshold we want to get.
+
+        Returns:
+            float: moisture threshold of the zone.
+        """
         try:
             params = {"zoneID": zoneID}
             response = requests.get(f"{self.catalog_url}/zones", params=params).json()
@@ -32,7 +50,7 @@ class IrrigationControl:
     
     def registerService(self):
         """
-        Register the service in the catalog
+        Register the service in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -46,7 +64,7 @@ class IrrigationControl:
     
     def updateService(self):
         """
-        Update the service registration in the catalog
+        Update the service registration in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -59,18 +77,30 @@ class IrrigationControl:
             print(f"Error updating service in the catalog: {e}")
 
     def notify(self, topic, payload):
+        """
+        Method called when a message is received.
+        Get the received moisture value and compare it with the moisture threshold of the zone to decide whether to activate the irrigation.
+        
+        Parameters:
+            topic (str): topic of the message.
+            payload (json): payload of the message.
+        """
         try:
             data = json.loads(payload)
             greenhouse_id = topic.split("/")[-3]
             zone_id = topic.split("/")[-2]
             moisture_level = data["v"]
             
-            # check if the moisture level is greater or lower than the treshold and put ON/OFF the irrigation command
+            # Get the moisture threshold of the zone
             threshold = self.get_zone_threshold(greenhouse_id, zone_id)
+
+            # If the moisture level is greater than the treshold publish the ON command
             if moisture_level < threshold:
                 print(f"[Greenhouse {greenhouse_id} zone {zone_id}] Moisture level {moisture_level} %, needs water!")
                 irrigation_command = {"command": "ON"}
                 self.client.myPublish(self.irrigation_topic.format(greenhouseID=greenhouse_id, zoneID=zone_id), irrigation_command)
+            
+            # If the moisture level is lower than the treshold publish the OFF command
             else:
                 print(f"[Greenhouse {greenhouse_id} zone {zone_id}] Moisture level {moisture_level} %, does not need water.")
                 irrigation_command = {"command": "OFF"}
@@ -80,11 +110,17 @@ class IrrigationControl:
             print(f"[Greenhouse {greenhouse_id} zone {zone_id}] Error processing message: {e}")
 
     def start(self):
+        """
+        Start the MQTT client and subscribe to the topic.
+        """
         self.client.start()
         self.client.mySubscribe(self.moisture_topic)
         print("Irrigation control ON")
 
     def stop(self):
+        """
+        Stop the MQTT client.
+        """
         self.client.stop()
         print("Irrigation control OFF")
 

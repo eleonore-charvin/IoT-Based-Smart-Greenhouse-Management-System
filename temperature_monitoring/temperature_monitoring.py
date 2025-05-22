@@ -2,8 +2,6 @@ import requests
 import json
 import time
 import datetime
-import uuid
-from MyMQTT import *
 
 class TemperatureMonitoring:
 
@@ -28,16 +26,10 @@ class TemperatureMonitoring:
             "zoneID": 0, 
             "thresholdDelta": 0
         }
-
-        # Create an MQTT client
-        self.mqttClient = MyMQTT(clientID=str(uuid.uuid1()), broker=self.broker, port=self.port, notifier=None)
-        
-        # Start it
-        self.mqttClient.start()
         
     def registerService(self):
         """
-        Register the service in the catalog
+        Register the service in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -51,7 +43,7 @@ class TemperatureMonitoring:
         
     def updateService(self):
         """
-        Update the service registration in the catalog
+        Update the service registration in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -62,12 +54,6 @@ class TemperatureMonitoring:
             print(f"Error raised by catalog while updating service: {e.response.status_code} - {e.args[0]}")
         except Exception as e:
             print(f"Error updating service in the catalog: {e}")
-
-    def stop(self):
-        """
-        Stop the MQTT client
-        """
-        self.mqttClient.stop()
     
     def get_temperature_averages(self, greenhouse, start_date_str, end_date_str):
         """

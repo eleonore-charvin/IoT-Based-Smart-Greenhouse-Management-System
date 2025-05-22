@@ -42,7 +42,7 @@ class Thingspeak_Adaptor:
     
     def registerService(self):
         """
-        Register the service in the catalog
+        Register the service in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -56,7 +56,7 @@ class Thingspeak_Adaptor:
         
     def updateService(self):
         """
-        Update the service registration in the catalog
+        Update the service registration in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -70,13 +70,14 @@ class Thingspeak_Adaptor:
 
     def stop(self):
         """
-        Stop the MQTT client
+        Stop the MQTT client.
         """
         self.mqttClient.stop()
     
     def notify(self, topic, payload):
         """
         Method called when a message is received.
+        Upload the received value in the corresponding Thingspeak field and channel.
         
         Parameters:
             topic (str): topic of the message.

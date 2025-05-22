@@ -7,6 +7,14 @@ from MyMQTT import *
 
 class TemperatureSensorMQTT:
     def __init__(self, settings, greenhouseID):
+        """
+        Initialize TemperatureSensor.
+        
+        Parameters:
+            settings (dict): Settings of TemperatureSensor.
+            greenhouseID (int): ID of the greenhouse in which the sensor is.
+        """
+
         self.settings = settings
         self.catalogURL = self.settings["catalogURL"]
         self.broker = self.settings["brokerIP"]
@@ -41,7 +49,7 @@ class TemperatureSensorMQTT:
     
     def registerDevice(self):
         """
-        Register the device in the catalog
+        Register the device in the catalog.
         """  
         try:   
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -58,7 +66,7 @@ class TemperatureSensorMQTT:
 
     def updateDevice(self):
         """
-        Update the device registration in the catalog
+        Update the device registration in the catalog.
         """
         try:
             actualTime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -85,7 +93,12 @@ class TemperatureSensorMQTT:
 
     def notify(self, topic, payload):
         """
-        Retreive command from the actuator and set the heating/cooling state accordingly.
+        Method called when a message is received.
+        Retreive the command and set the heating and cooling states accordingly.
+        
+        Parameters:
+            topic (str): topic of the message.
+            payload (json): payload of the message.
         """
         try:
             message = json.loads(payload)
@@ -109,7 +122,7 @@ class TemperatureSensorMQTT:
 
     def simulate_temperature(self):
         """
-        Simulate the reading of the temperature value.
+        Simulate the temperature value.
         """
         if self.heating:
             self.current_temperature = min(self.previous_temperature + random.uniform(0.3, 0.8), self.max_temperature)
@@ -123,10 +136,9 @@ class TemperatureSensorMQTT:
 
     def publish(self):
         """
-        Publish the temperature value to the topic MQTT.
+        Simulate and publish the temperature value.
         """
         temperature = self.simulate_temperature()
-        #file di tipo senML
         message = self._message.copy()
         message["v"] = temperature
         message["t"] = time.time()
