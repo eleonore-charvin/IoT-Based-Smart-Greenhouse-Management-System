@@ -1,0 +1,237 @@
+[
+    {
+        "id": "f6f2187d.f17ca8",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "587e92e9d815371e",
+        "type": "ui_template",
+        "z": "f6f2187d.f17ca8",
+        "group": "34a9bdc967235097",
+        "name": "Temperature",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "format": "<iframe width=\"450\" height=\"260\" style=\"border: 1px solid #cccccc;\"\n    src=\"https://thingspeak.com/channels/2969979/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15\"></iframe>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 130,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "aba750a879eee256",
+        "type": "ui_template",
+        "z": "f6f2187d.f17ca8",
+        "group": "34a9bdc967235097",
+        "name": "Moisture",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "format": "<iframe width=\"450\" height=\"260\" style=\"border: 1px solid #cccccc;\"\n    src=\"https://thingspeak.com/apps/matlab_visualizations/623983\"></iframe>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 120,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "448db1e9651508a2",
+        "type": "ui_template",
+        "z": "f6f2187d.f17ca8",
+        "group": "2acd733fa7e896a1",
+        "name": "Heating and cooling status",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "format": "<iframe width=\"450\" height=\"260\" style=\"border: 1px solid #cccccc;\"\n    src=\"https://thingspeak.com/channels/2969979/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15\"></iframe>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 180,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9a793a2c23c46a1f",
+        "type": "ui_template",
+        "z": "f6f2187d.f17ca8",
+        "group": "2acd733fa7e896a1",
+        "name": "Total irrigation",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "format": "<iframe width=\"450\" height=\"260\" style=\"border: 1px solid #cccccc;\"\n    src=\"https://thingspeak.com/channels/2969979/charts/3?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15\"></iframe>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 140,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6c64a89cd5278d46",
+        "type": "ui_template",
+        "z": "f6f2187d.f17ca8",
+        "group": "7f7d641675fb34cc",
+        "name": "Temperature",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "format": "<iframe width=\"450\" height=\"260\" style=\"border: 1px solid #cccccc;\"\n    src=\"https://thingspeak.com/channels/2970003/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15\"></iframe>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 130,
+        "y": 400,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f64d56928eda7358",
+        "type": "ui_template",
+        "z": "f6f2187d.f17ca8",
+        "group": "7f7d641675fb34cc",
+        "name": "Moisture",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "format": "<iframe width=\"450\" height=\"260\" style=\"border: 1px solid #cccccc;\"\n    src=\"https://thingspeak.com/apps/matlab_visualizations/623991\"></iframe>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 120,
+        "y": 460,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "be666bc8b99c04a1",
+        "type": "ui_template",
+        "z": "f6f2187d.f17ca8",
+        "group": "99deaf8f9098a3bf",
+        "name": "Heating and cooling status",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "format": "<iframe width=\"450\" height=\"260\" style=\"border: 1px solid #cccccc;\"\n    src=\"https://thingspeak.com/channels/2970003/charts/2?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15\"></iframe>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 180,
+        "y": 520,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8ea8aad79b429647",
+        "type": "ui_template",
+        "z": "f6f2187d.f17ca8",
+        "group": "99deaf8f9098a3bf",
+        "name": "Total irrigation",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "format": "<iframe width=\"450\" height=\"260\" style=\"border: 1px solid #cccccc;\"\n    src=\"https://thingspeak.com/channels/2970003/charts/3?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15\"></iframe>",
+        "storeOutMessages": true,
+        "fwdInMessages": true,
+        "resendOnRefresh": true,
+        "templateScope": "local",
+        "className": "",
+        "x": 140,
+        "y": 580,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "34a9bdc967235097",
+        "type": "ui_group",
+        "name": "Sensors",
+        "tab": "93a4169947dbf70d",
+        "order": 1,
+        "disp": true,
+        "width": "10",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "2acd733fa7e896a1",
+        "type": "ui_group",
+        "name": "Actuators",
+        "tab": "93a4169947dbf70d",
+        "order": 2,
+        "disp": true,
+        "width": "10",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "7f7d641675fb34cc",
+        "type": "ui_group",
+        "name": "Sensors",
+        "tab": "fedd776106abacd7",
+        "order": 1,
+        "disp": true,
+        "width": "10",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "99deaf8f9098a3bf",
+        "type": "ui_group",
+        "name": "Actuators",
+        "tab": "fedd776106abacd7",
+        "order": 2,
+        "disp": true,
+        "width": "10",
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "93a4169947dbf70d",
+        "type": "ui_tab",
+        "name": "User1",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "fedd776106abacd7",
+        "type": "ui_tab",
+        "name": "User2",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    }
+]
